@@ -45,13 +45,13 @@ try {
         echo json_encode($data);
         exit;
     } else {
-        getPrice($upc);
+        getPrice($upc,$link,$usrAgent,$td,$ip);
     }
 } catch (Exception $e) {
     echo json_encode($e);
 }
 
-function getPrice($upc) {
+function getPrice($upc,$link,$usrAgent,$td,$ip) {
     $uri = "http://www.searchupc.com/handlers/upcsearch.ashx?request_type=3&access_token=44ED474B-CA18-4B27-B147-D2C1DBF41C60&upc=$upc";
 
     $ch = curl_init();
@@ -77,8 +77,19 @@ function getPrice($upc) {
     $data = array();
 
     $data[] = array('desc' => "$desc", 'rrp' => "$price", 'exchangePrice' => "$percentileEBP", 'cashPrice' => "$percentileCBP");
-
+    $api = "/Search for '$upc'.php";
+    logRequest($link, $usrAgent, $td, $ip, $api);
     echo json_encode($data);
+    
+
+}
+
+function logRequest($link, $usrAgent, $td, $ip, $api) {
+    $reqLogSQL = "INSERT INTO _gg_lg_access
+                (_agent,_ip,_req_dt,_api)
+                VALUES ('$usrAgent','$ip', '$td','$api')";
+
+    $link->query($reqLogSQL);
 }
 
 ?>
