@@ -23,7 +23,7 @@ $token = $_GET['tkn'];
 
 
 try {
-    $link = new mysqli("localhost", $user, $pass, "_gg");
+    $link = include 'dbconfig.php';
 } catch (mysqli_sql_exception $e) {
     echo json_encode($e);
 }
@@ -74,18 +74,11 @@ try {
             $i++;
         }
 
-        try {
-            getPrice($upc);
-            
-        } catch (Exception $e) {
-            echo json_encode($e);
-        }
-
         
           $sql = "INSERT INTO _gg_stock
-          (_code_id,_stock_name,_stock_desc,_cat,_sub_cat,_pic,_barcode,_cond,_col,dt_add,_cbp,_ebp)
+          (_code_id,_stock_name,_stock_desc,_cat,_sub_cat,_pic,_barcode,_cond,_col,_dt_add,_cbp,_ebp)
           VALUES ('$unique_ref','$sName', '$sDesc','$cat','$scat','$pic','$upc','$cnd','$col','$td',$percentileCBP,$percentileEBP)";
-
+      
           $link->query($sql);
           $api = '/addStock.php';
           logRequest($link, $usrAgent, $td, $ip, $api);

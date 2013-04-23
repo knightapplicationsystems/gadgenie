@@ -13,7 +13,7 @@ $username = $_GET['u'];
 $password = $_GET['p'];
 
 try {
-    $link = new mysqli("localhost", $user, $pass, "_gg");
+    $link = $mysqli = include 'dbconfig.php';
 } catch (mysqli_sql_exception $e) {
     echo json_encode($e);
 }

@@ -1,8 +1,5 @@
 <?php
 
-$user = 'root';
-$pass = '522561jh';
-
 $api = '';
 $key = $_GET["key"];
 $usrAgent = $_SERVER['HTTP_USER_AGENT'];
@@ -14,7 +11,7 @@ $td = date("Y-m-d H:i:s");
 $expDate = date('Y-m-d H:i:s', strtotime('+30 minutes'));
 try
 {  
-    $link = new mysqli("localhost", $user, $pass, "_gg");
+    $link = include 'dbconfig.php';
 }
 catch (mysqli_sql_exception $e)
 {
@@ -24,11 +21,12 @@ catch (mysqli_sql_exception $e)
 
 
 try {
+    //$res = $link->query("SELECT * FROM _gg_api_users WHERE _key = '$key'");
     $res = $link->query("SELECT * FROM _gg_api_users WHERE _key = '$key'");
     $num_results = mysqli_num_rows($res); 
     if ($num_results < 1) {
         $api = 'Invalid key - /getToken.php';
-        logRequest($link, $usrAgent, $td, $ip, $api,$reqUrl);
+        logRequest($link,$usrAgent, $td, $ip, $api,$reqUrl);
         $data = array();
         
         $data[] = array('resp' => "Key not recognised");
@@ -60,7 +58,7 @@ try {
 
         $link->query($sql);
         $api = '/getToken.php';
-        logRequest($link, $usrAgent, $td, $ip, $api,$reqUrl);
+        logRequest($link,$usrAgent, $td, $ip, $api,$reqUrl);
 
         $data = array();
 
@@ -86,7 +84,7 @@ function logRequest($link,$usrAgent,$td,$ip,$api,$reqUrl)
 }
 
 
- $link->close();
+$link->close();
 
 
 ?>
