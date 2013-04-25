@@ -23,6 +23,18 @@ if (isset($_GET['t'])) {
     $t = '';
 }
 
+if (isset($_GET['ref'])) {
+    $ref = $_GET['ref'];
+} else {
+    $ref = '';
+}
+
+if (isset($_GET['o'])) {
+    $ov = $_GET['o'];
+} else {
+    $ov = '';
+}
+
 
 $token = $_GET['tkn'];
 
@@ -39,7 +51,7 @@ try {
     $num_results = mysqli_num_rows($res);
 
     if ($num_results < 1) {
-        $api = 'Invalid Token - /addStock.php';
+        $api = 'Invalid Token - /searchStock.php';
         logRequest($link, $usrAgent, $td, $ip, $api);
         $data = array();
 
@@ -51,7 +63,7 @@ try {
     $row = mysqli_fetch_array($res, MYSQLI_NUM);
 
     if ($row[3] < $td) {
-        $api = 'Token Expired - /addStock.php';
+        $api = 'Token Expired - /searchStock.php';
         logRequest($link, $usrAgent, $td, $ip, $api);
         $data = array();
 
@@ -60,16 +72,21 @@ try {
         echo json_encode($data);
         exit;
     } else {
-        checkExistingStock($upc, $q, $t, $link, $usrAgent, $td, $ip);
+        checkExistingStock($upc, $q, $t,$ov, $ref, $link, $usrAgent, $td, $ip);
     }
 } catch (Exception $e) {
     echo json_encode($e);
 }
 
-function checkExistingStock($upc, $q, $t, $link, $usrAgent, $td, $ip) {
+function checkExistingStock($upc, $q, $t,$ov, $ref, $link, $usrAgent, $td, $ip) {
 
     if ($upc == '') {
-        getPriceNoUPC($q, $t, $link, $usrAgent, $td, $ip);
+        if ($ref != '') {
+
+            getStock($ref, $link, $usrAgent, $td, $ip);
+        } else {
+            getPriceNoUPC($q, $t,$ov, $link, $usrAgent, $td, $ip);
+        }
     } else {
 
         $checkSQL = $link->query("SELECT * FROM _gg_stock_master WHERE _upc = '$upc'");
@@ -92,8 +109,31 @@ function checkExistingStock($upc, $q, $t, $link, $usrAgent, $td, $ip) {
     }
 }
 
-function getPriceNoUPC($q, $t, $link, $usrAgent, $td, $ip) {
+function getPriceNoUPC($q, $t,$ov, $link, $usrAgent, $td, $ip) {
 
+  
+    $checkSQL = $link->query("SELECT * FROM _gg_stock WHERE _stock_name LIKE '%$q%'");
+    $row = mysqli_fetch_array($checkSQL, MYSQLI_NUM);
+
+    if ($row[2] == '') {
+        amazon_lookup_q($q, $t, $link, $usrAgent, $td, $ip);
+    } else if ($ov == 'overide') {
+        amazon_lookup_q($q, $t, $link, $usrAgent, $td, $ip);
+    } else {
+        $data = array();
+        $checkSQL1 = $link->query("SELECT * FROM _gg_stock_master WHERE _stock_name LIKE '%$q%'");
+        while ($nrow = mysqli_fetch_array($checkSQL1)) {
+            $data[] = array('stock_name' => $nrow["_stock_name"], 'stock_desc' => $nrow["_stock_desc"], 'upc' => $nrow["_upc"],
+                'rrp' => $nrow["_rrp"], 'cash price' => $nrow["_cbp"], 'exchange price' => $nrow["_ebp"]);
+        }
+        echo json_encode($data);
+        $api = "Search for $q";
+        logRequest($link, $usrAgent, $td, $ip, $api);
+        echo json_encode($data);
+    }
+}
+
+function amazon_lookup_q($q, $t, $link, $usrAgent, $td, $ip) {
     include("lib/amazon_api_class.php");
 
     $obj = new AmazonProductAPI();
@@ -130,13 +170,12 @@ function getPriceNoUPC($q, $t, $link, $usrAgent, $td, $ip) {
         foreach ($node->getElementsByTagName('UPC') as $upc) {
 
             $cUPC = ($upc->nodeValue);
-
         }
         foreach ($node->getElementsByTagName('Title') as $title) {
 
             //echo 'Title: ' . $title->nodeValue;
-           // echo '<br>';
-            
+            // echo '<br>';
+
             $cTitle = ($title->nodeValue);
         }
         //LowestUsedPrice
@@ -144,81 +183,68 @@ function getPriceNoUPC($q, $t, $link, $usrAgent, $td, $ip) {
 
             //echo 'LowestNewPrice: ' . $lowPrice->nodeValue;
             //echo '<br>';
+
             $cRRP = ($lowPrice->nodeValue);
-            
+            $pc = $cRRP / 100;
         }
 
 
         // Doing it this way means we get get nodes specific to the item we are on (this is more controlled)  
-        
-        $percentileCBP = round($cRRP * 0.60, 2);
 
-        $percentileEBP = round($cRRP * 0.75, 2);
-        
-        
-            $data = array();
+        $percentileCBP = round($pc * 0.60, 2);
 
-        $data[] = array('upc' => "$cUPC",'title' => "$cTitle", 'rrp' => "$cRRP", 'exchangePrice' => "$percentileEBP", 'cashPrice' => "$percentileCBP");
+        $percentileEBP = round($pc * 0.75, 2);
+
+
+        $data = array();
+
+        $data[] = array('upc' => "$cUPC", 'title' => "$cTitle", 'rrp' => "$pc", 'exchangePrice' => "$percentileEBP", 'cashPrice' => "$percentileCBP");
         echo json_encode($data);
+        $api = 'Get Price without UPC';
+        logRequest($link, $usrAgent, $td, $ip, $api);
     }
-    
-    
+}
 
-    
-    
-    
-    
-    /*
-    $desc = $json[0]['productname'];
+function getStock($ref, $link, $usrAgent, $td, $ip) {
 
-    $price = $json[0]['price'];
-    
-    $percentileCBP = round($price * 0.60, 2);
-    $percentileEBP = round($price * 0.75, 2);
-
-    $sql = "INSERT INTO _gg_stock_master
-          (_stock_name,_stock_desc,_upc,_rrp,_cbp,_ebp)
-          VALUES ('$desc', '$desc','$upc',$price,$percentileCBP,$percentileEBP)";
-    $link->query($sql);
 
     $data = array();
+    $checkSQL = $link->query("SELECT * FROM _gg_stock WHERE _code_id = '$ref'");
 
-    $data[] = array('desc' => "$desc", 'rrp' => "$price", 'exchangePrice' => "$percentileEBP", 'cashPrice' => "$percentileCBP");
-    $api = "/Search for '$upc'.php";
-    logRequest($link, $usrAgent, $td, $ip, $api);
+    while ($nrow = mysqli_fetch_array($checkSQL)) {
+        $data[] = array('stock_name' => $nrow["_stock_name"], 'stock_desc' => $nrow["_stock_desc"], 'upc' => $nrow["_barcode"],
+            'cash_price' => $nrow["_cbp"], 'exchange_price' => $nrow["_ebp"]);
+    }
     echo json_encode($data);
-     * 
-     */
 
+    $api = "Get Item with $ref";
+    logRequest($link, $usrAgent, $td, $ip, $api);
 }
 
 function getPrice($upc, $link, $usrAgent, $td, $ip) {
-    
+
     include("lib/amazon_api_class.php");
 
     $obj = new AmazonProductAPI();
-    
+
     //$result = $obj->searchProducts("$upc", AmazonProductAPI::ELECTRONICS, "UPC");
     $upc_code = $upc;
     $product_type = "Electronics";
     $res = $obj->getItemByUpc($upc_code, $product_type);
-    
+
     $xml = new DOMDocument();
     $xml->loadXML($res->saveXML());
-    
-    
+
+
     foreach ($xml->getElementsByTagName('Item') as $node) {
 
         foreach ($node->getElementsByTagName('Title') as $title) {
             $desc = $title->nodeValue;
-
         }
         //LowestUsedPrice
         foreach ($node->getElementsByTagName('LowestNewPrice') as $lowPrice) {
-               $pr = $lowPrice->nodeValue;
-               $pc = $pr / 100;
-
-
+            $pr = $lowPrice->nodeValue;
+            $pc = $pr / 100;
         }
         // Doing it this way means we get get nodes specific to the item we are on (this is more controlled)    
     }
@@ -228,7 +254,7 @@ function getPrice($upc, $link, $usrAgent, $td, $ip) {
     $percentileEBP = round($pc * 0.75, 2);
 
 
- 
+
     $sql = "INSERT INTO _gg_stock_master
           (_stock_name,_stock_desc,_upc,_rrp,_cbp,_ebp)
           VALUES ('$desc', '$desc','$upc',$pc,$percentileCBP,$percentileEBP)";
@@ -240,13 +266,12 @@ function getPrice($upc, $link, $usrAgent, $td, $ip) {
     $api = "/Search for '$upc'.php";
     logRequest($link, $usrAgent, $td, $ip, $api);
     echo json_encode($data);
-    
-    
-    
-    
-    
-    $link->close();
 
+
+
+
+
+    $link->close();
 }
 
 function logRequest($link, $usrAgent, $td, $ip, $api) {

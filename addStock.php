@@ -1,8 +1,5 @@
 <?php
 
-$user = 'root';
-$pass = '522561jh';
-
 //Top level common params
 $td = date("Y-m-d H:i:s");
 //Security
@@ -19,6 +16,13 @@ $cnd = $_GET['cn'];
 $col = $_GET['co'];
 $percentileCBP = $_GET['cbp'];
 $percentileEBP = $_GET['ebp'];
+
+if (isset($_GET['usr'])) {
+    $usr = $_GET['usr'];
+} else {
+    $usr = '';
+}
+
 $token = $_GET['tkn'];
 
 
@@ -76,9 +80,11 @@ try {
 
         
           $sql = "INSERT INTO _gg_stock
-          (_code_id,_stock_name,_stock_desc,_cat,_sub_cat,_pic,_barcode,_cond,_col,_dt_add,_cbp,_ebp)
-          VALUES ('$unique_ref','$sName', '$sDesc','$cat','$scat','$pic','$upc','$cnd','$col','$td',$percentileCBP,$percentileEBP)";
-      
+          (_code_id,_stock_name,_stock_desc,_cat,_sub_cat,_pic,_barcode,_cond,_col,_dt_add,_cbp,_ebp,_add_by)
+          VALUES ('$unique_ref','$sName', '$sDesc','$cat','$scat',
+              '$pic','$upc','$cnd','$col','$td',$percentileCBP,$percentileEBP,'$usr')";
+
+                  
           $link->query($sql);
           $api = '/addStock.php';
           logRequest($link, $usrAgent, $td, $ip, $api);
