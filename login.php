@@ -1,8 +1,5 @@
 <?php
 
-$user = 'root';
-$pass = '522561jh';
-
 $usrAgent = $_SERVER['HTTP_USER_AGENT'];
 $reqUrl = $_SERVER['REQUEST_URI'];
 $ip = $_SERVER['REMOTE_ADDR'];
@@ -11,6 +8,13 @@ $td = date("Y-m-d H:i:s");
 $token = $_GET['tkn'];
 $username = $_GET['u'];
 $password = $_GET['p'];
+
+if (isset($_GET['t'])) {
+    $t = $_GET['t'];
+} else {
+    $t = '';
+}
+
 
 try {
     $link = $mysqli = include 'dbconfig.php';
@@ -55,32 +59,62 @@ try {
             echo json_encode($data);
             exit;
         } else {
-            //Get Salt and Password
-            $fst = $link->query("SELECT * FROM _gg_cust WHERE _uname = '$username'");
 
-            $row = mysqli_fetch_array($fst, MYSQLI_NUM);
+            if ($t == 'staff') {
+                
+                $password = hash('md5', "$password");
+                $query = $link->query("SELECT * FROM _gg_staff WHERE _code = '$username' AND _pwd = '$password'");
+                $num_results = mysqli_num_rows($query);
 
-            $salt = $row[15];
+                if ($num_results < 1) {
+                    $data = array();
 
-            $deErb = hash('sha1', "$salt$password");
-            //echo $deErb ;
-            $verify = $link->query("SELECT * FROM _gg_cust WHERE _uname = '$username' AND _pwd = '$deErb'");
-            //echo ("SELECT * FROM _gg_cust WHERE _uname = '$username' AND _pwd = '$deErb'");
+                    $data[] = array('resp' => "Login invalid");
 
-            $data = array();
-            try {
+                    echo json_encode($data);
+                    exit;
+                } else {
+                    $verify = $link->query("SELECT * FROM _gg_staff WHERE _code = '$username' AND _pwd = '$password'");
 
-                while ($nRow = mysqli_fetch_array($verify)) {
-                    $data[] = array('memID' => $nRow["_memNumber"], 'fname' => $nRow["_fname"], 'sname' => $nRow["_sname"], 'dob' => $nRow["_dob"], 'add1' => $nRow["_add1"],
-                        'add2' => $nRow["_add2"], 'town' => $nRow["_town"], 'pcode' => $nRow["_pcode"], 'hphone' => $nRow["_hphone"], 'mphone' => $nRow["_mphone"]
-                        , 'email' => $nRow["_email"], 'country' => $nRow["_country"], 'county' => $nRow["_county"]);
+                    $data = array();
 
-                    //echo 'Airport Name:' . $row["airport_name"];
+                    while ($nRow = mysqli_fetch_array($verify)) {
+                        $data[] = array('code' => $nRow["_code"], 'fname' => $nRow["_fname"], 'sname' => $nRow["_sname"],
+                            'admin' => $nRow["_is_admin"], 'sales' => $nRow["_is_sales"], 'backO' => $nRow["_is_back_office"]);
+
+                        //echo 'Airport Name:' . $row["airport_name"];
+                    }
+
+                    echo json_encode($data);
                 }
+            } else {
+                //Get Salt and Password
+                $fst = $link->query("SELECT * FROM _gg_cust WHERE _uname = '$username'");
 
-                echo json_encode($data);
-            } catch (Exception $e) {
-                echo json_encode($e);
+                $row = mysqli_fetch_array($fst, MYSQLI_NUM);
+
+                $salt = $row[15];
+
+                $deErb = hash('sha1', "$salt$password");
+                //echo $deErb ;
+                $verify = $link->query("SELECT * FROM _gg_cust WHERE _uname = '$username' AND _pwd = '$deErb'");
+                //echo ("SELECT * FROM _gg_cust WHERE _uname = '$username' AND _pwd = '$deErb'");
+
+                $data = array();
+                try {
+
+                    while ($nRow = mysqli_fetch_array($verify)) {
+                        $data[] = array('memID' => $nRow["_memNumber"], 'fname' => $nRow["_fname"], 'sname' => $nRow["_sname"], 'dob' => $nRow["_dob"], 'add1' => $nRow["_add1"],
+                            'add2' => $nRow["_add2"], 'town' => $nRow["_town"], 'pcode' => $nRow["_pcode"], 'hphone' => $nRow["_hphone"], 'mphone' => $nRow["_mphone"]
+                            , 'email' => $nRow["_email"], 'country' => $nRow["_country"], 'county' => $nRow["_county"]);
+
+                        //echo 'Airport Name:' . $row["airport_name"];
+                    }
+
+                    echo json_encode($data);
+                } catch (Exception $e) {
+                    echo json_encode($e);
+                }
             }
         }
     }

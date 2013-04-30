@@ -18,6 +18,7 @@ class AmazonProductAPI
     const COMPUTER = "Computer & Video Games";
     const ELECTRONICS = "Electronics";
     const CONSUMER_ELECTRONICS = "Consumer Electronics";
+    const ALL = "All";
  
     private function verifyXmlResponse($response)
     {
@@ -49,8 +50,8 @@ class AmazonProductAPI
  
     public function searchProducts($search,$category,$searchType="UPC")
     {
-        $allowedTypes = array("UPC", "TITLE", "ARTIST", "KEYWORD");
-        $allowedCategories = array("Music", "DVD", "VideoGames","Computer & Video Games","Software","Electronics","Consumer Electronics");
+        $allowedTypes = array("EAN","UPC", "TITLE", "ARTIST", "KEYWORD");
+        $allowedCategories = array("Music", "DVD", "VideoGames","Computer & Video Games","Software","Electronics","All");
  
         switch($searchType) 
         {
@@ -59,6 +60,13 @@ class AmazonProductAPI
                                     "ItemId"        => $search,
                                     "SearchIndex"   => $category,
                                     "IdType"        => "UPC",
+                                    "ResponseGroup" => "Medium");
+                            break;
+                                    case "EAN" :
+                $parameters = array("Operation"     => "ItemLookup",
+                                    "ItemId"        => $search,
+                                    "SearchIndex"   => $category,
+                                    "IdType"        => "EAN",
                                     "ResponseGroup" => "Medium");
                             break;
  
@@ -83,6 +91,20 @@ class AmazonProductAPI
                             "ItemId"        => $upc_code,
                             "SearchIndex"   => $product_type,
                             "IdType"        => "UPC",
+                            "ResponseGroup" => "Medium");
+ 
+        $xml_response = $this->queryAmazon($parameters);
+ 
+        return $this->verifyXmlResponse($xml_response);
+ 
+    }
+    
+        public function getItemByEAN($ean, $product_type)
+    {
+        $parameters = array("Operation"     => "ItemLookup",
+                            "ItemId"        => $ean,
+                            "SearchIndex"   => $product_type,
+                            "IdType"        => "EAN",
                             "ResponseGroup" => "Medium");
  
         $xml_response = $this->queryAmazon($parameters);

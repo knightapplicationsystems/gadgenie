@@ -16,6 +16,8 @@ $cnd = $_GET['cn'];
 $col = $_GET['co'];
 $percentileCBP = $_GET['cbp'];
 $percentileEBP = $_GET['ebp'];
+$sPrice = $_GET['sp'];
+$pprice = $_GET['pp'];
 
 if (isset($_GET['usr'])) {
     $usr = $_GET['usr'];
@@ -77,13 +79,17 @@ try {
 
             $i++;
         }
-
+        $name = mysqli_real_escape_string($link,$sName);
+        $desc = mysqli_real_escape_string($link,$sDesc);
         
           $sql = "INSERT INTO _gg_stock
-          (_code_id,_stock_name,_stock_desc,_cat,_sub_cat,_pic,_barcode,_cond,_col,_dt_add,_cbp,_ebp,_add_by)
-          VALUES ('$unique_ref','$sName', '$sDesc','$cat','$scat',
-              '$pic','$upc','$cnd','$col','$td',$percentileCBP,$percentileEBP,'$usr')";
+          (_code_id,_stock_name,_stock_desc,_cat,_sub_cat,_pic,_barcode,_cond,_col,_dt_add,_cbp,_ebp,_sp,_add_by,_pprice)
+          VALUES ('$unique_ref','$name', '$desc','$cat','$scat',
+              '$pic','$upc','$cnd','$col','$td',$percentileCBP,$percentileEBP,$sPrice,'$usr',$pprice)";
 
+              require_once 'lib/stock_qr/getQR.php';
+    
+             write_qr_to_disk($unique_ref);
                   
           $link->query($sql);
           $api = '/addStock.php';
