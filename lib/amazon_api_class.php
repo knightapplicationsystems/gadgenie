@@ -70,7 +70,13 @@ class AmazonProductAPI
                                     "ResponseGroup" => "Medium");
                             break;
  
-            case "TITLE" :
+                case "TITLE" :
+                $parameters = array("Operation"     => "ItemSearch",
+                                    "Title"         => $search,
+                                    "SearchIndex"   => $category,
+                                    "ResponseGroup" => "Medium");
+                            break;
+                case "KEYWORD" :
                 $parameters = array("Operation"     => "ItemSearch",
                                     "Title"         => $search,
                                     "SearchIndex"   => $category,
@@ -105,7 +111,7 @@ class AmazonProductAPI
                             "ItemId"        => $ean,
                             "SearchIndex"   => $product_type,
                             "IdType"        => "EAN",
-                            "ResponseGroup" => "Medium");
+                            "ResponseGroup" => "Large");
  
         $xml_response = $this->queryAmazon($parameters);
  
@@ -128,7 +134,8 @@ class AmazonProductAPI
     {
         $parameters = array("Operation"   => "ItemSearch",
                             "Keywords"    => $keyword,
-                            "SearchIndex" => $product_type);
+                            "SearchIndex" => $product_type,
+                             "ResponseGroup" => "Large");
  
         $xml_response = $this->queryAmazon($parameters);
  

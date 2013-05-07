@@ -25,7 +25,7 @@ try {
     $res = $link->query("SELECT * FROM _gg_api_users WHERE _key = '$key'");
     $num_results = mysqli_num_rows($res); 
     if ($num_results < 1) {
-        $api = 'Invalid key - /getToken.php';
+        $api = 'Invalid key';
         logRequest($link,$usrAgent, $td, $ip, $api,$reqUrl);
         $data = array();
         
@@ -57,7 +57,7 @@ try {
                 VALUES ('$unique_ref','$td', '$expDate','$usrAgent','$ip')";
 
         $link->query($sql);
-        $api = '/getToken.php';
+        $api = "Get Token for key $key";
         logRequest($link,$usrAgent, $td, $ip, $api,$reqUrl);
 
         $data = array();

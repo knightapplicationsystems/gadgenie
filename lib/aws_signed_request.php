@@ -49,7 +49,7 @@ function  aws_signed_request($region,
  
     /* create request */
     $request = "http://".$host.$uri."?".$canonicalized_query."&Signature=".$signature;
-
+    //echo $request;
     
     /* I prefer using CURL */
     $ch = curl_init();
