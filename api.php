@@ -114,6 +114,12 @@ try {
 
             check_stock_master($ean, $link, $usrAgent, $td, $ip,$reqUrl);
         }
+        else if($call == 'search_qr')
+        {
+            $qr = $_GET['qr'];
+            
+            get_product_info_qr($qr, $link, $usrAgent, $td, $ip, $reqUrl);
+        }
         else if ($call == 'search_q_a')
         {
             $q = $_GET['q'];
@@ -175,10 +181,49 @@ try {
             $percentileEBP = $_GET['ebp'];
             $sPrice = $_GET['sp'];
             $pprice = $_GET['pp'];
+            $usr = $_GET['us'];
             
-            add_stock($sName,$sDesc,$cat,$scat,$pic,$upc,$cnd,$col,$percentileCBP,$percentileEBP,$sPrice,$pprice,$link, $usrAgent, $td, $ip, $reqUrl);
+            add_stock($sName,$sDesc,$cat,$scat,$pic,$upc,$cnd,$col,$percentileCBP,$percentileEBP,$sPrice,$usr,$pprice,$link, $usrAgent, $td, $ip, $reqUrl);
             
         }
+        else if ($call == 'get_quant')
+        {
+            $ean = $_GET['ean'];
+            
+            check_stock_level_ean($ean, $link, $usrAgent, $td, $ip, $reqUrl);
+        }
+        else if ($call == 'set_stock_offline_sales')
+        {
+            $ref = $_GET['r'];
+            
+            set_stock_offline($ref, $link, $usrAgent, $td, $ip, $reqUrl);
+        }
+        else if($call == 'get_rec')
+        {
+            $mem = $_GET['m'];
+            $ptype = $_GET['pt'];
+            $pref = $_GET['pr'];
+            $sbuy = $_GET['u'];
+            $tcash = $_GET['tc'];
+            $texcg = $_GET['te'];
+            $tpoints = $_GET['tp'];
+            
+            create_receipt($link, $mem, $ptype, $pref, $sbuy, $tcash, $texcg, $tpoints,$usrAgent, $td, $ip, $reqUrl);
+        }
+        else if ($call == 'sell_stock_epos')
+        {
+            $mem = $_GET['m'];
+            $route = $_GET['rt'];
+            $pref = $_GET['pr'];
+            $rec = $_GET['rec'];
+            $sPrice = $_GET['sp'];
+            $sbuy = $_GET['u'];
+            $ref = $_GET['r'];
+            
+            sell_stock_epos($link, $mem, $route, $pref, $rec, $sPrice, $sbuy, $ref, $usrAgent, $td, $ip, $reqUrl);
+            
+        }
+        
     }
 } catch (Exception $e) {
     echo json_encode($e);

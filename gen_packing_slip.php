@@ -1,6 +1,6 @@
 
 <?php
-require('fpdf.php');
+require('lib/fpdf.php');
 
 class PDF extends FPDF
 {
@@ -11,7 +11,7 @@ function Header()
     //Local
     //$this->Image('C:\\Users\\Justin.Howard\\Dropbox\\Justin\\lib\\stock_qr\\gg.png',10,6,30);
     //Server
-    $this->Image('//Volumes//web//gadgenie//api//lib//stock_qr//gg.png',10,6,30);
+    $this->Image('gg.png',10,6,30);
     // Arial bold 15
     $this->SetFont('Arial','B',15);
     // Move to the right
@@ -34,7 +34,7 @@ function Footer()
 }
 }
 
-function gen_new_packing_slip($getQR,$unique_ref)
+function gen_new_packing_slip($getQR,$unique_ref,$email)
 {
     
     //$filename = 'lib/stock_qr/4SFWGAS2SP5MQBJYNCAU8ISYI.png';
@@ -62,16 +62,15 @@ function gen_new_packing_slip($getQR,$unique_ref)
     require 'emailer.php';
     
     //$email = "mylescgriffith@gmail.com";
-    $email  = "justin@knightfinderapp.com";
     $mailType = "Delivery information for your item";
-    $url = "http://knightnas.synology.me/gadgenie/api/lib/stock_qr/packing_slips/" . $unique_ref . '.pdf';
-    
+    $url = "http://gadgenie.com/api/cust_docs/packing_slips/" . $unique_ref . '.pdf';
+
     send_new_add_stock_email($email, $mailType,$url);
     //Local
     //$pdf->Output('C:\\wamp\\www\\gadgenie\\api\\lib\\stock_qr\\packing_slips\\' . $unique_ref . '.pdf','F');
     //Server
     //Volumes//web//gadgenie//api//lib//stock_qr//
-    $pdf->Output('//Volumes//web//gadgenie//api//lib//packing_slips//' . $unique_ref . '.pdf','F');
+    $pdf->Output('cust_docs/packing_slips/' . $unique_ref . '.pdf','F');
 }
 
 
