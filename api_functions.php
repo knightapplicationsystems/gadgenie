@@ -1,5 +1,7 @@
 <?php
+
 $td = date("Y-m-d H:i:s");
+
 //Login Customer
 function login_member($link, $username, $password, $usrAgent, $td, $ip, $reqUrl) {
 
@@ -137,8 +139,7 @@ function register_customer($link, $fname, $sname, $dob, $add1, $add2, $city, $pc
     logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
 }
 
-function get_product_info_qr($qr, $link, $usrAgent, $td, $ip, $reqUrl)
-{
+function get_product_info_qr($qr, $link, $usrAgent, $td, $ip, $reqUrl) {
     $checkSQL = $link->query("SELECT * 
                 FROM _gg_stock
                 WHERE _code_id = '$qr'");
@@ -155,11 +156,11 @@ function get_product_info_qr($qr, $link, $usrAgent, $td, $ip, $reqUrl)
 
         while ($nrow = mysqli_fetch_array($checkSQL1)) {
             $data[] = array('stock_name' => $nrow["_stock_name"], 'stock_desc' => $nrow["_stock_desc"],
-            'upc' => $nrow["_barcode"],
-            'sale_price' => $nrow["_rrp"], 'cash_price' => $nrow["_cbp"], 'exchange_price' => $nrow["_ebp"],
-            'sub_cat' => $nrow["_sub_cat"]);
+                'upc' => $nrow["_barcode"],
+                'sale_price' => $nrow["_rrp"], 'cash_price' => $nrow["_cbp"], 'exchange_price' => $nrow["_ebp"],
+                'sub_cat' => $nrow["_sub_cat"]);
         }
-        
+
         $api = "Search for $qr";
         logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
         echo json_encode($data);
@@ -180,6 +181,9 @@ function get_price_by_ean_amazon($ean, $link, $usrAgent, $td, $ip, $reqUrl) {
 //Loop through XML nodes for the response
     $data = array();
     foreach ($xml->getElementsByTagName('Item') as $node) {
+        foreach ($node->getElementsByTagName('SalesRank') as $rank) {
+            $asr = $rank->nodeValue;
+        }
 //Title
         foreach ($xml->getElementsByTagName('ItemAttributes') as $node) {
             foreach ($node->getElementsByTagName('Title') as $title) {
@@ -200,10 +204,34 @@ function get_price_by_ean_amazon($ean, $link, $usrAgent, $td, $ip, $reqUrl) {
                 if ($pc < 1) {
                     $pc = 0.30;
                 }
-//Cash buy price
-                $percentileCBP = round($pc * 0.60, 2);
-//Exchange Buy Price
-                $percentileEBP = round($pc * 0.75, 2);
+                if ($item_cat == 'Blu-ray' || $item_cat == 'DVD' || $item_cat == 'Audio CD') {
+                    //Cash buy price
+                    $percentileCBP = round($pc * 0.32, 2);
+                    //Exchange Buy Price
+                    $percentileEBP = round($pc * 0.40, 2);
+                } else if ($item_cat == 'Video Game') {
+                    //Cash buy price
+                    $percentileCBP = round($pc * 0.62, 2);
+                    //Exchange Buy Price
+                    $percentileEBP = round($pc * 0.75, 2);
+                } else {
+                    if ($asr <= 999) {
+                        //Cash buy price
+                        $percentileCBP = round($pc * 0.50, 2);
+                        //Exchange Buy Price
+                        $percentileEBP = round($pc * 0.65, 2);
+                    } else if ($asr >= 1000 && $asr <= 9999) {
+                        //Cash buy price
+                        $percentileCBP = round($pc * 0.35, 2);
+                        //Exchange Buy Price
+                        $percentileEBP = round($pc * 0.50, 2);
+                    } else if ($asr > 10000) {
+                        //Cash buy price
+                        $percentileCBP = round($pc * 0.20, 2);
+                        //Exchange Buy Price
+                        $percentileEBP = round($pc * 0.35, 2);
+                    }
+                }
             }
         }
         $data[] = array('stock_name' => "$desc",
@@ -215,8 +243,8 @@ function get_price_by_ean_amazon($ean, $link, $usrAgent, $td, $ip, $reqUrl) {
 
 //Create new record in the DB
     $sql = "INSERT INTO _gg_stock_master
-          (_stock_name,_stock_desc,_sub_cat,_upc,_rrp,_cbp,_ebp)
-          VALUES ('$desc', '$desc','$item_cat',$ean,$pc,$percentileCBP,$percentileEBP)";
+          (_stock_name,_stock_desc,_sub_cat,_upc,_rrp,_cbp,_ebp,_asr)
+          VALUES ('$desc', '$desc','$item_cat',$ean,$pc,$percentileCBP,$percentileEBP,$asr)";
     $link->query($sql);
 
 
@@ -247,6 +275,9 @@ function get_price_by_keyword_amazon($q, $link, $usrAgent, $td, $ip, $reqUrl) {
     $data = array();
 
     foreach ($xml->getElementsByTagName('Item') as $topNode) {
+        foreach ($topNode->getElementsByTagName('SalesRank') as $rank) {
+            $asr = $rank->nodeValue;
+        }
 
         foreach ($topNode->getElementsByTagName('ItemAttributes') as $node) {
             foreach ($node->getElementsByTagName('Title') as $title) {
@@ -263,9 +294,22 @@ function get_price_by_keyword_amazon($q, $link, $usrAgent, $td, $ip, $reqUrl) {
             foreach ($node->getElementsByTagName('LowestNewPrice') as $lowPrice) {
                 $cRRP = ($lowPrice->nodeValue);
                 $pc = $cRRP / 100;
-                $percentileCBP = round($pc * 0.60, 2);
-
-                $percentileEBP = round($pc * 0.75, 2);
+                if ($asr <= 999) {
+                    //Cash buy price
+                    $percentileCBP = round($pc * 0.50, 2);
+                    //Exchange Buy Price
+                    $percentileEBP = round($pc * 0.65, 2);
+                } else if ($asr >= 1000 && $asr <= 9999) {
+                    //Cash buy price
+                    $percentileCBP = round($pc * 0.35, 2);
+                    //Exchange Buy Price
+                    $percentileEBP = round($pc * 0.50, 2);
+                } else if ($asr > 10000) {
+                    //Cash buy price
+                    $percentileCBP = round($pc * 0.20, 2);
+                    //Exchange Buy Price
+                    $percentileEBP = round($pc * 0.35, 2);
+                }
             }
         }
         $data[] = array('stock_name' => "$cTitle",
@@ -316,8 +360,8 @@ function add_stock($sName, $sDesc, $cat, $scat, $pic, $upc, $cnd, $col, $percent
         $row = mysqli_fetch_array($verify, MYSQLI_NUM);
         $usr = $row[0];
         $email = $row[15];
-         require_once 'getQR.php';
-            write_qr_to_disk($unique_ref, $email);
+        require_once 'getQR.php';
+        write_qr_to_disk($unique_ref, $email);
     }
 
 
@@ -326,8 +370,8 @@ function add_stock($sName, $sDesc, $cat, $scat, $pic, $upc, $cnd, $col, $percent
     VALUES ('$unique_ref','$name', '$desc','$cat','$scat',
     '$pic','$upc','$cnd','$col','$td',$percentileCBP,$percentileEBP,$sPrice,$usr,$pprice)";
 
-   
-    
+
+
 
     $link->query($sql);
     $api = "Stock $name added to Stock Levels";
@@ -481,53 +525,44 @@ function update_tran_log($link, $ref, $td, $usr) {
 SET _date_in = '$td', usr = '$usr' WHERE _date_out != '$td' AND _item_ref= '$ref'");
 }
 
-function sell_stock_epos($link,$mem,$route,$pref,$rec,$sPrice,$sbuy,$ref,$usrAgent, $td, $ip, $reqUrl)
-{
+function sell_stock_epos($link, $mem, $route, $pref, $rec, $sPrice, $sbuy, $ref, $usrAgent, $td, $ip, $reqUrl) {
     $exp = date('Y-m-d H:i:s', strtotime('+1 year'));
-    
+
     $link->query("UPDATE _gg_stock
                     SET _pymnt_ref = '$pref',_warr_end = '$exp',_dt_sold = '$td',_sold_to = '$mem', _route = '$route',
                         _order_ref = '$rec',_sp = $sPrice,_sold_by = '$sbuy',_picked=1,_dispatched=1
                     WHERE _code_id = '$ref'");
-    
+
     log_sales_record($link, $rec, $ref, $sPrice, $usrAgent, $td, $ip, $reqUrl);
-    
 }
 
-function log_sales_record($link,$rec,$td,$ref,$sPrice,$usrAgent, $td, $ip, $reqUrl)
-{
+function log_sales_record($link, $rec, $td, $ref, $sPrice, $usrAgent, $td, $ip, $reqUrl) {
     $reqLogSQL = "INSERT INTO _gg_sales
                 (_order_ref,_dt_sold,_item_ref,_sale_price)
                 VALUES ('$rec','$td', '$ref',$sPrice)";
     //echo $reqLogSQL;
     $link->query($reqLogSQL);
-    
 
-    
+
+
     $api = "ITEM SOLD - $ref";
     logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
 }
 
-function create_receipt($link,$mem,$ptype,$pref,$sbuy,$tcash,$texcg,$tpoints,$usrAgent, $td, $ip, $reqUrl)
-{
+function create_receipt($link, $mem, $ptype, $pref, $sbuy, $tcash, $texcg, $tpoints, $usrAgent, $td, $ip, $reqUrl) {
     $rec = require_once 'uniqueGen.php';
 
     $link->query("INSERT INTO _gg_receipt (_rec_ref,_memNumber,_pymnt_type,_pymnt_ref,_sold_by
         ,_total_cash,_total_exchange,_total_points,_dt_sold)
         VALUES ('$rec','$mem','$ptype','$pref','$sbuy',$tcash,$texcg,$tpoints,$td)");
-    
-        $data = array();
-        $data[] = array('receipt_ref' => $rec);
-        echo json_encode($data);
-        
-        $api = "Receipt generated by $sbuy";
-        logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
-    
+
+    $data = array();
+    $data[] = array('receipt_ref' => $rec);
+    echo json_encode($data);
+
+    $api = "Receipt generated by $sbuy";
+    logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
 }
-
-
-
-
 
 function new_tran_log($link, $ref, $dest, $curr_loc, $td, $usr, $usrAgent, $td, $ip, $reqUrl) {
     $exp = date('Y-m-d H:i:s', strtotime('+5 minutes'));
@@ -549,4 +584,5 @@ VALUES ('$usrAgent','$ip', '$td','$api','$reqUrl')";
 
     $link->query($reqLogSQL);
 }
+
 ?>
