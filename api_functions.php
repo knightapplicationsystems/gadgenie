@@ -155,10 +155,11 @@ function get_product_info_qr($qr, $link, $usrAgent, $td, $ip, $reqUrl) {
                                     WHERE _code_id = '$qr'");
 
         while ($nrow = mysqli_fetch_array($checkSQL1)) {
+            $points = $nrow["_sp"] * 1000;
             $data[] = array('stock_name' => $nrow["_stock_name"], 'stock_desc' => $nrow["_stock_desc"],
                 'upc' => $nrow["_barcode"],
-                'sale_price' => $nrow["_rrp"], 'cash_price' => $nrow["_cbp"], 'exchange_price' => $nrow["_ebp"],
-                'sub_cat' => $nrow["_sub_cat"]);
+                'sale_price' => $nrow["_sp"], 'cash_price' => $nrow["_cbp"], 'exchange_price' => $nrow["_ebp"],
+                'sub_cat' => $nrow["_sub_cat"], 'points' => "$points");
         }
 
         $api = "Search for $qr";
@@ -201,7 +202,8 @@ function get_price_by_ean_amazon($ean, $link, $usrAgent, $td, $ip, $reqUrl) {
             foreach ($node->getElementsByTagName('LowestUsedPrice') as $lowPrice) {
                 $pr = $lowPrice->nodeValue;
                 $pc = $pr / 100;
-                if ($pc < 1) {
+                $points = $pc * 1000;
+                if ($pc < 0.30) {
                     $pc = 0.30;
                 }
                 if ($item_cat == 'Blu-ray' || $item_cat == 'DVD' || $item_cat == 'Audio CD') {
@@ -236,7 +238,7 @@ function get_price_by_ean_amazon($ean, $link, $usrAgent, $td, $ip, $reqUrl) {
         }
         $data[] = array('stock_name' => "$desc",
             'stock_desc' => "$desc", 'sale_price' => "$pc", 'exchange_price' => "$percentileEBP",
-            'cash_price' => "$percentileCBP", 'upc' => "$ean", 'sub_cat' => "$item_cat");
+            'cash_price' => "$percentileCBP", 'upc' => "$ean", 'sub_cat' => "$item_cat",'points' => "$points");
     }
 
 
@@ -345,32 +347,19 @@ VALUES
     logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
 }
 
-function add_stock($sName, $sDesc, $cat, $scat, $pic, $upc, $cnd, $col, $percentileCBP, $percentileEBP, $sPrice, $usr, $pprice, $link, $usrAgent, $td, $ip, $reqUrl) {
+function add_stock($sName, $sDesc, $cat, $scat, $pic, $upc, $cnd, $col, $percentileCBP, $percentileEBP, $sPrice, $usr,$rec, $pprice, $link, $usrAgent, $td, $ip, $reqUrl) {
 
     $unique_ref = require_once 'uniqueGen.php';
 
     $name = mysqli_real_escape_string($link, $sName);
     $desc = mysqli_real_escape_string($link, $sDesc);
-
-    if ($usr == 'S1') {
-        
-    } else {
-        //Check DB for email 
-        $verify = $link->query("SELECT * FROM _gg_cust WHERE _memNumber = '$usr'");
-        $row = mysqli_fetch_array($verify, MYSQLI_NUM);
-        $usr = $row[0];
-        $email = $row[15];
-        require_once 'getQR.php';
-        write_qr_to_disk($unique_ref, $email);
-    }
-
+    $cat = mysqli_real_escape_string($link, $cat);
+    $scat = mysqli_real_escape_string($link,$scat);
 
     $sql = "INSERT INTO _gg_stock
-    (_code_id,_stock_name,_stock_desc,_cat,_sub_cat,_pic,_barcode,_cond,_col,_dt_add,_cbp,_ebp,_sp,_add_by,_pprice)
+    (_code_id,_stock_name,_stock_desc,_cat,_sub_cat,_pic,_barcode,_cond,_col,_dt_add,_cbp,_ebp,_sp,_add_by,_pprice,_rec_ref)
     VALUES ('$unique_ref','$name', '$desc','$cat','$scat',
-    '$pic','$upc','$cnd','$col','$td',$percentileCBP,$percentileEBP,$sPrice,$usr,$pprice)";
-
-
+    '$pic','$upc','$cnd','$col','$td',$percentileCBP,$percentileEBP,$sPrice,'$usr',$pprice,'$rec')";
 
 
     $link->query($sql);
@@ -384,6 +373,15 @@ function add_stock($sName, $sDesc, $cat, $scat, $pic, $upc, $cnd, $col, $percent
     echo json_encode($data);
 }
 
+function gen_email_purchase($link,$usr,$rec){
+        $verify = $link->query("SELECT * FROM _gg_cust WHERE _memNumber = '$usr'");
+        $row = mysqli_fetch_array($verify, MYSQLI_NUM);
+        $usr = $row[0];
+        $email = $row[15];
+        require_once 'getQR.php';
+        write_qr_to_disk($rec, $email);
+}
+
 //Check existing stock before trying Amazon
 function check_stock_master($ean, $link, $usrAgent, $td, $ip, $reqUrl) {
     $checkSQL = $link->query("SELECT * FROM _gg_stock_master WHERE _upc = '$ean'");
@@ -395,10 +393,12 @@ function check_stock_master($ean, $link, $usrAgent, $td, $ip, $reqUrl) {
         $data = array();
         $checkSQLL = $link->query("SELECT * FROM _gg_stock_master WHERE _upc = '$ean'");
         while ($nrow = mysqli_fetch_array($checkSQLL)) {
+            $point = $nrow["_rrp"];
+            $points = $point * 1000;
             $data[] = array('stock_name' => $nrow["_stock_name"], 'stock_desc' => $nrow["_stock_desc"],
                 'upc' => $nrow["_upc"],
                 'sale_price' => $nrow["_rrp"], 'cash_price' => $nrow["_cbp"], 'exchange_price' => $nrow["_ebp"],
-                'sub_cat' => $nrow["_sub_cat"]);
+                'sub_cat' => $nrow["_sub_cat"],'points' => "$points");
         }
         echo json_encode($data);
         $api = "Search Stock Master for $ean";
@@ -525,6 +525,15 @@ function update_tran_log($link, $ref, $td, $usr) {
 SET _date_in = '$td', usr = '$usr' WHERE _date_out != '$td' AND _item_ref= '$ref'");
 }
 
+function log_epos_tran($link,$cashIn,$cashOut,$cardTotal,$authCode,$usr,$ref)
+{
+    $reqLogSQL = "INSERT INTO _gg_epos_trans
+                (_cash_in,_cash_out,_user,_auth_code,_card_total,_rec_ref)
+                VALUES ($cashIn,$cashOut,$usr,$authCode,$cardTotal,'$ref')";
+    //echo $reqLogSQL;
+    $link->query($reqLogSQL);
+}
+
 function sell_stock_epos($link, $mem, $route, $pref, $rec, $sPrice, $sbuy, $ref, $usrAgent, $td, $ip, $reqUrl) {
     $exp = date('Y-m-d H:i:s', strtotime('+1 year'));
 
@@ -545,16 +554,17 @@ function log_sales_record($link, $rec, $td, $ref, $sPrice, $usrAgent, $td, $ip, 
 
 
 
-    $api = "ITEM SOLD - $ref";
+    $api = "ITEM SOLD $ref";
     logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
 }
 
-function create_receipt($link, $mem, $ptype, $pref, $sbuy, $tcash, $texcg, $tpoints, $usrAgent, $td, $ip, $reqUrl) {
+function create_receipt($link, $mem, $ptype, $pref, $sbuy, $tcash, $tpoints, $usrAgent, $td, $ip, $reqUrl) {
     $rec = require_once 'uniqueGen.php';
 
     $link->query("INSERT INTO _gg_receipt (_rec_ref,_memNumber,_pymnt_type,_pymnt_ref,_sold_by
-        ,_total_cash,_total_exchange,_total_points,_dt_sold)
-        VALUES ('$rec','$mem','$ptype','$pref','$sbuy',$tcash,$texcg,$tpoints,$td)");
+        ,_total_cash,_total_points,_dt_sold)
+        VALUES ('$rec','$mem','$ptype','$pref','$sbuy',$tcash,$tpoints,'$td')");
+   
 
     $data = array();
     $data[] = array('receipt_ref' => $rec);
@@ -562,6 +572,23 @@ function create_receipt($link, $mem, $ptype, $pref, $sbuy, $tcash, $texcg, $tpoi
 
     $api = "Receipt generated by $sbuy";
     logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
+}
+
+function create_purchase_receipt ($link,$usr,$td,$tcash,$texcg,$tpoints, $usrAgent, $td, $ip, $api, $reqUrl)
+{
+    $rec = require_once 'uniqueGen.php';
+    
+    $link->query("INSERT INTO _gg_purchased (_rec_ref,_add_by,_dt_add
+        ,_total_cash,_total_exchange,_total_points)
+        VALUES ('$rec','$usr','$td',$tcash,$texcg,$tpoints)");
+
+    $data = array();
+    $data[] = array('receipt_ref' => $rec);
+    echo json_encode($data);
+
+    $api = "Purchase Receipt generated by $usr";
+    logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
+    
 }
 
 function new_tran_log($link, $ref, $dest, $curr_loc, $td, $usr, $usrAgent, $td, $ip, $reqUrl) {
@@ -575,6 +602,43 @@ VALUES
     logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
 //$link->close();
 }
+
+
+function get_active_print_jobs($link)
+{
+    $resp = $link->query("SELECT * FROM _gg_label_jobs WHERE _is_printed = 0");
+    $num_results = mysqli_num_rows($resp);
+    if ($num_results < 1) {
+        $data = array();
+
+        $data[] = array('resp' => "No Jobs");
+
+        echo json_encode($data);
+
+        exit;
+    } else {
+//Array variable for the JSON response
+        $data = array();
+//Go through the result set and return the customer details
+        while ($nRow = mysqli_fetch_array($resp)) {
+            $data[] = array('file_name' => $nRow["_file_name"]);
+        }
+//Send a JSON RESP back
+        echo json_encode($data);
+
+        }
+}
+
+function update_file_printed($link,$fname)
+{
+    $link->query("UPDATE _gg_label_jobs
+                    SET _is_printed = 1
+                    WHERE _file_name = '$fname'");
+}
+
+
+
+
 
 //Audit Log
 function logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl) {

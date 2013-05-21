@@ -15,7 +15,12 @@ try {
     echo json_encode($e);
 }
 
-try {
+try 
+{
+    //Record Sale
+
+    
+    
     //Check that the request comes with a valid token
     $res = $link->query("SELECT * FROM _gg_token WHERE _token = '$token'");
     $num_results = mysqli_num_rows($res);
@@ -182,9 +187,16 @@ try {
             $sPrice = $_GET['sp'];
             $pprice = $_GET['pp'];
             $usr = $_GET['us'];
+            $rec = $_GET['rec'];
             
-            add_stock($sName,$sDesc,$cat,$scat,$pic,$upc,$cnd,$col,$percentileCBP,$percentileEBP,$sPrice,$usr,$pprice,$link, $usrAgent, $td, $ip, $reqUrl);
+            add_stock($sName,$sDesc,$cat,$scat,$pic,$upc,$cnd,$col,$percentileCBP,$percentileEBP,$sPrice,$usr,$rec,$pprice,$link, $usrAgent, $td, $ip, $reqUrl);
             
+        }
+        else if ($call == 'gen_email_purchase')
+        {
+            $usr = $_GET['u'];
+            $rec = $_GET['r'];
+            gen_email_purchase($link, $usr, $rec);
         }
         else if ($call == 'get_quant')
         {
@@ -205,10 +217,9 @@ try {
             $pref = $_GET['pr'];
             $sbuy = $_GET['u'];
             $tcash = $_GET['tc'];
-            $texcg = $_GET['te'];
             $tpoints = $_GET['tp'];
             
-            create_receipt($link, $mem, $ptype, $pref, $sbuy, $tcash, $texcg, $tpoints,$usrAgent, $td, $ip, $reqUrl);
+            create_receipt($link, $mem, $ptype, $pref, $sbuy, $tcash, $tpoints,$usrAgent, $td, $ip, $reqUrl);
         }
         else if ($call == 'sell_stock_epos')
         {
@@ -223,6 +234,37 @@ try {
             sell_stock_epos($link, $mem, $route, $pref, $rec, $sPrice, $sbuy, $ref, $usrAgent, $td, $ip, $reqUrl);
             
         }
+        else if ($call == 'get_rec_pur')
+        {
+            $usr = $_GET['u'];
+            $tcash = $_GET['tc'];
+            $texcg = $_GET['te'];
+            $tpoints = $_GET['tp'];
+            create_purchase_receipt($link , $usr, $td, $tcash, $texcg, $tpoints, $usrAgent, $td, $ip, $reqUrl);
+        }
+        else if ($call == 'get_active_print_jobs')
+        {
+            get_active_print_jobs($link);
+        }
+        else if ($call == 'update_print_printed')
+        {
+            $fname = $_GET['f'];
+            update_file_printed($link, $fname);
+        }
+        else if ($call == 'record_sale')
+        {
+            $cashIn = $_GET['ci'];
+            $cashOut = $_GET['co'];
+            $cardTotal = $_GET['ct'];
+            $authCode = $_GET['ac'];
+            $usr = $_GET['u'];
+            $ref = $_GET['r'];
+            
+            log_epos_tran($link, $cashIn, $cashOut, $cardTotal, $authCode, $usr, $ref);
+        }
+        
+        
+        
         
     }
 } catch (Exception $e) {
