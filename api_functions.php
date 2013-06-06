@@ -1,45 +1,74 @@
 <?php
 
-$td = date("Y-m-d H:i:s");
-
 //Login Customer
-function login_member($link, $username, $password, $usrAgent, $td, $ip, $reqUrl) {
+function login_member($link, $username, $password, $pro, $uid, $usrAgent, $td, $ip, $reqUrl) {
 
 //Get Salt and Password
-    $fst = $link->query("SELECT * FROM _gg_cust WHERE _uname = '$username'");
-//CDreate Array to check valid login
-    $row = mysqli_fetch_array($fst, MYSQLI_NUM);
+    if ($pro == 'np') {
+        $fst = $link->query("SELECT * FROM _gg_cust WHERE _uname = '$username'");
+        //CDreate Array to check valid login
+        $row = mysqli_fetch_array($fst, MYSQLI_NUM);
 //Get the Salt from the table
-    $salt = $row[19];
+        $salt = $row[19];
 //Hash the salt and password together to verify in the database
-    $deErb = hash('sha1', "$salt$password");
+        $deErb = hash('sha1', "$salt$password");
 //Check DB for the above
-    $verify = $link->query("SELECT * FROM _gg_cust WHERE _uname = '$username' AND _pwd = '$deErb'");
+        $verify = $link->query("SELECT * FROM _gg_cust WHERE _uname = '$username' AND _pwd = '$deErb'");
 //Check valid login details
-    $num_results = mysqli_num_rows($verify);
-    if ($num_results < 1) {
-        $data = array();
+        $num_results = mysqli_num_rows($verify);
+        if ($num_results < 1) {
+            $data = array();
 
-        $data[] = array('resp' => "Login invalid");
+            $data[] = array('resp' => "Login invalid");
 
-        echo json_encode($data);
-        $api = 'Invalid Login';
-        logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
-        exit;
-    } else {
+            echo json_encode($data);
+            $api = 'Invalid Login';
+            logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
+            exit;
+        } else {
 //Array variable for the JSON response
-        $data = array();
+            $data = array();
 //Go through the result set and return the customer details
-        while ($nRow = mysqli_fetch_array($verify)) {
-            $data[] = array('memID' => $nRow["_memNumber"], 'fname' => $nRow["_fname"], 'sname' => $nRow["_sname"], 'dob' => $nRow["_dob"], 'add1' => $nRow["_add1"],
-                'add2' => $nRow["_add2"], 'town' => $nRow["_town"], 'pcode' => $nRow["_pcode"], 'hphone' => $nRow["_hphone"], 'mphone' => $nRow["_mphone"]
-                , 'email' => $nRow["_email"], 'country' => $nRow["_country"], 'county' => $nRow["_county"]);
-        }
+            while ($nRow = mysqli_fetch_array($verify)) {
+                $data[] = array('memID' => $nRow["_memNumber"], 'fname' => $nRow["_fname"], 'sname' => $nRow["_sname"], 'dob' => $nRow["_dob"], 'add1' => $nRow["_add1"],
+                    'add2' => $nRow["_add2"], 'town' => $nRow["_town"], 'pcode' => $nRow["_pcode"], 'hphone' => $nRow["_hphone"], 'mphone' => $nRow["_mphone"]
+                    , 'email' => $nRow["_email"], 'country' => $nRow["_country"], 'county' => $nRow["_county"]);
+            }
 //Send a JSON RESP back
-        echo json_encode($data);
+            echo json_encode($data);
 //Audit
-        $api = "User $username logged in ok";
-        logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
+            $api = "User $username logged in ok";
+            logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
+        }
+    } else {
+        //Check DB for the above
+        $verify = $link->query("SELECT * FROM _gg_cust WHERE _uid = '$uid'");
+//Check valid login details
+        $num_results = mysqli_num_rows($verify);
+        if ($num_results < 1) {
+            $data = array();
+
+            $data[] = array('resp' => "Login invalid");
+
+            echo json_encode($data);
+            $api = 'Invalid Login';
+            logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
+            exit;
+        } else {
+//Array variable for the JSON response
+            $data = array();
+//Go through the result set and return the customer details
+            while ($nRow = mysqli_fetch_array($verify)) {
+                $data[] = array('memID' => $nRow["_memNumber"], 'fname' => $nRow["_fname"], 'sname' => $nRow["_sname"], 'dob' => $nRow["_dob"], 'add1' => $nRow["_add1"],
+                    'add2' => $nRow["_add2"], 'town' => $nRow["_town"], 'pcode' => $nRow["_pcode"], 'hphone' => $nRow["_hphone"], 'mphone' => $nRow["_mphone"]
+                    , 'email' => $nRow["_email"], 'country' => $nRow["_country"], 'county' => $nRow["_county"]);
+            }
+//Send a JSON RESP back
+            echo json_encode($data);
+//Audit
+            $api = "User $username logged in ok";
+            logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
+        }
     }
 }
 
@@ -110,7 +139,7 @@ function register_staff($link, $fname, $sname, $code, $pwd, $admin, $sales, $bo,
 }
 
 //New Customer Registration
-function register_customer($link, $fname, $sname, $dob, $add1, $add2, $city, $pcode, $county, $idt, $idd, $uname, $pwd, $email, $hphone, $mphone, $usrAgent, $td, $ip, $reqUrl) {
+function register_customer($link, $fname, $sname, $dob, $add1, $add2, $city, $pcode, $county, $idt, $idd, $uname, $pwd, $email, $hphone, $mphone,$pro,$uid, $usrAgent, $td, $ip, $reqUrl) {
 //Get a mem ID
     $memID = require_once 'uniqueGen.php';
 //Get a Salt
@@ -122,10 +151,10 @@ function register_customer($link, $fname, $sname, $dob, $add1, $add2, $city, $pc
 //SQL Query
     $sql = "INSERT INTO _gg_cust
                     (_memNumber,_fname,_sname,_dob,_add1,_add2,_town,_pcode,_hphone,_mphone,_email,
-                    _country,_county,_uname,_salt,_pwd,_id_type,_id_detail)
+                    _country,_county,_uname,_salt,_pwd,_id_type,_id_detail,_provider,_uid)
                     VALUES
                     ('$memID','$fname','$sname','$dob','$add1','$add2','$city','$pcode','$hphone',
-                     '$mphone','$email','UK', '$county','$uname','$salt','$saltedPass','$idt','$idd')";
+                     '$mphone','$email','UK', '$county','$uname','$salt','$saltedPass','$idt','$idd','$pro','$uid')";
 
     $link->query($sql);
 
@@ -238,7 +267,7 @@ function get_price_by_ean_amazon($ean, $link, $usrAgent, $td, $ip, $reqUrl) {
         }
         $data[] = array('stock_name' => "$desc",
             'stock_desc' => "$desc", 'sale_price' => "$pc", 'exchange_price' => "$percentileEBP",
-            'cash_price' => "$percentileCBP", 'upc' => "$ean", 'sub_cat' => "$item_cat",'points' => "$points");
+            'cash_price' => "$percentileCBP", 'upc' => "$ean", 'sub_cat' => "$item_cat", 'points' => "$points");
     }
 
 
@@ -347,19 +376,23 @@ VALUES
     logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
 }
 
-function add_stock($sName, $sDesc, $cat, $scat, $pic, $upc, $cnd, $col, $percentileCBP, $percentileEBP, $sPrice, $usr,$rec, $pprice, $link, $usrAgent, $td, $ip, $reqUrl) {
+function add_stock($sName, $sDesc, $cat, $scat, $pic, $upc, $cnd, $col, $percentileCBP, $percentileEBP, $sPrice, $usr, $rec, $pprice, $link, $usrAgent, $td, $ip, $reqUrl) {
 
     $unique_ref = require_once 'uniqueGen.php';
+    require_once 'getQR.php';
+
+    new_qr_per_product($unique_ref);
 
     $name = mysqli_real_escape_string($link, $sName);
     $desc = mysqli_real_escape_string($link, $sDesc);
     $cat = mysqli_real_escape_string($link, $cat);
-    $scat = mysqli_real_escape_string($link,$scat);
+    $scat = mysqli_real_escape_string($link, $scat);
 
     $sql = "INSERT INTO _gg_stock
     (_code_id,_stock_name,_stock_desc,_cat,_sub_cat,_pic,_barcode,_cond,_col,_dt_add,_cbp,_ebp,_sp,_add_by,_pprice,_rec_ref)
     VALUES ('$unique_ref','$name', '$desc','$cat','$scat',
     '$pic','$upc','$cnd','$col','$td',$percentileCBP,$percentileEBP,$sPrice,'$usr',$pprice,'$rec')";
+
 
 
     $link->query($sql);
@@ -373,13 +406,13 @@ function add_stock($sName, $sDesc, $cat, $scat, $pic, $upc, $cnd, $col, $percent
     echo json_encode($data);
 }
 
-function gen_email_purchase($link,$usr,$rec){
-        $verify = $link->query("SELECT * FROM _gg_cust WHERE _memNumber = '$usr'");
-        $row = mysqli_fetch_array($verify, MYSQLI_NUM);
-        $usr = $row[0];
-        $email = $row[15];
-        require_once 'getQR.php';
-        write_qr_to_disk($rec, $email);
+function gen_email_purchase($link, $usr, $rec, $etype) {
+    $verify = $link->query("SELECT * FROM _gg_cust WHERE _memNumber = '$usr'");
+    $row = mysqli_fetch_array($verify, MYSQLI_NUM);
+    $usr = $row[0];
+    $email = $row[15];
+
+    add_to_email_queue($link, $email, $rec, $etype);
 }
 
 //Check existing stock before trying Amazon
@@ -398,7 +431,7 @@ function check_stock_master($ean, $link, $usrAgent, $td, $ip, $reqUrl) {
             $data[] = array('stock_name' => $nrow["_stock_name"], 'stock_desc' => $nrow["_stock_desc"],
                 'upc' => $nrow["_upc"],
                 'sale_price' => $nrow["_rrp"], 'cash_price' => $nrow["_cbp"], 'exchange_price' => $nrow["_ebp"],
-                'sub_cat' => $nrow["_sub_cat"],'points' => "$points");
+                'sub_cat' => $nrow["_sub_cat"], 'points' => "$points");
         }
         echo json_encode($data);
         $api = "Search Stock Master for $ean";
@@ -525,8 +558,7 @@ function update_tran_log($link, $ref, $td, $usr) {
 SET _date_in = '$td', usr = '$usr' WHERE _date_out != '$td' AND _item_ref= '$ref'");
 }
 
-function log_epos_tran($link,$cashIn,$cashOut,$cardTotal,$authCode,$usr,$ref)
-{
+function log_epos_tran($link, $cashIn, $cashOut, $cardTotal, $authCode, $usr, $ref) {
     $reqLogSQL = "INSERT INTO _gg_epos_trans
                 (_cash_in,_cash_out,_user,_auth_code,_card_total,_rec_ref)
                 VALUES ($cashIn,$cashOut,$usr,$authCode,$cardTotal,'$ref')";
@@ -560,24 +592,29 @@ function log_sales_record($link, $rec, $td, $ref, $sPrice, $usrAgent, $td, $ip, 
 
 function create_receipt($link, $mem, $ptype, $pref, $sbuy, $tcash, $tpoints, $usrAgent, $td, $ip, $reqUrl) {
     $rec = require_once 'uniqueGen.php';
+    require_once 'gen_purchase_receipt.php';
+    require_once 'getQR.php';
 
     $link->query("INSERT INTO _gg_receipt (_rec_ref,_memNumber,_pymnt_type,_pymnt_ref,_sold_by
         ,_total_cash,_total_points,_dt_sold)
         VALUES ('$rec','$mem','$ptype','$pref','$sbuy',$tcash,$tpoints,'$td')");
-   
+
 
     $data = array();
     $data[] = array('receipt_ref' => $rec);
     echo json_encode($data);
 
+    write_qr_to_disk($rec);
+
+    gen_new_receipt($rec, $link);
+
     $api = "Receipt generated by $sbuy";
     logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
 }
 
-function create_purchase_receipt ($link,$usr,$td,$tcash,$texcg,$tpoints, $usrAgent, $td, $ip, $api, $reqUrl)
-{
+function create_purchase_receipt($link, $usr, $td, $tcash, $texcg, $tpoints, $usrAgent, $td, $ip, $reqUrl) {
     $rec = require_once 'uniqueGen.php';
-    
+
     $link->query("INSERT INTO _gg_purchased (_rec_ref,_add_by,_dt_add
         ,_total_cash,_total_exchange,_total_points)
         VALUES ('$rec','$usr','$td',$tcash,$texcg,$tpoints)");
@@ -588,7 +625,10 @@ function create_purchase_receipt ($link,$usr,$td,$tcash,$texcg,$tpoints, $usrAge
 
     $api = "Purchase Receipt generated by $usr";
     logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
-    
+}
+
+function add_to_email_queue($link, $email, $rec, $etype) {
+    $link->query("INSERT INTO _gg_emailq (_email,_email_type,_sent,_rec) VALUES ('$email','$etype',0,'$rec')");
 }
 
 function new_tran_log($link, $ref, $dest, $curr_loc, $td, $usr, $usrAgent, $td, $ip, $reqUrl) {
@@ -603,9 +643,7 @@ VALUES
 //$link->close();
 }
 
-
-function get_active_print_jobs($link)
-{
+function get_active_print_jobs($link) {
     $resp = $link->query("SELECT * FROM _gg_label_jobs WHERE _is_printed = 0");
     $num_results = mysqli_num_rows($resp);
     if ($num_results < 1) {
@@ -625,20 +663,18 @@ function get_active_print_jobs($link)
         }
 //Send a JSON RESP back
         echo json_encode($data);
-
-        }
+    }
 }
 
-function update_file_printed($link,$fname)
-{
+function update_file_printed($link, $fname) {
     $link->query("UPDATE _gg_label_jobs
                     SET _is_printed = 1
                     WHERE _file_name = '$fname'");
 }
 
-
-
-
+function add_to_print_queue() {
+    
+}
 
 //Audit Log
 function logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl) {
