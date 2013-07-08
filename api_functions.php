@@ -649,7 +649,6 @@ function get_basket_sell($link, $memID, $usrAgent, $td, $ip, $api, $reqUrl) {
     $checkSQL = $link->query("SELECT * FROM _gg_basket_sell WHERE _memID = '$memID'");
     $row = mysqli_fetch_array($checkSQL, MYSQLI_NUM);
     $data = array();
-    $res = array();
     if ($row[1] == '') {
         header("HTTP/1.0 201 No Products Found", true, 201);
         $api = "No Products matching $memID in sell list";
@@ -657,24 +656,29 @@ function get_basket_sell($link, $memID, $usrAgent, $td, $ip, $api, $reqUrl) {
     } else {
         $checkSQLL = $link->query("SELECT * FROM _gg_basket_sell WHERE _memID = '$memID'");
         while ($nrow = mysqli_fetch_array($checkSQLL)) {
-            $ean = $nrow["_ean"];
-            echo $ean;
-            $res = get_from_amz($link, $ean);
-            array_push($data, $res);
-            var_dump($data);
             
+            $ean = $nrow["_ean"];
             //echo $ean;
+            $getResults = $link->query("SELECT * FROM _gg_stock_master WHERE _upc = '$ean'");
+                $trow = mysqli_fetch_row($getResults);
+                $point = $trow[4];
+                $url = "http://ecx.images-amazon.com/images/I/31SxnS2yWKL.jpg";
+                $points = $point * 1000;
+                $data[] = array('stock_name' => $trow[1], 'stock_desc' => $trow[2],
+                'ean' => $trow[3],
+                'rrp' => $trow[4], 'cash_price' => $trow[5], 'exchange_price' => $trow[6],
+                'category' => $trow[8], 'points' => "$points", 'slug' => $trow[14], 'image_url' => "$url"); 
+            
+            
+            
         }
-        echo json_encode($data);
+        
     }
-    //JSON Response
-    
-    //Stock Name, EAN, RRP, EBP, CBP, Cat, Stock Desc, Points, Image, Slug
+    echo json_encode($data);
+        $api = "Basket returned for $memID";
+        logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
 }
 
-function get_from_amz($link,$ean) {
-    
-}
 
 function get_basket_buy($link, $memID) {
     
