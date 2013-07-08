@@ -1,11 +1,13 @@
 <?php
 
+header('Content-type: application/json');
+
 //Login Customer
 function login_member($link, $username, $password, $pro, $uid, $usrAgent, $td, $ip, $reqUrl) {
-
+    $rand = require_once 'tempTkn.php';
 //Get Salt and Password
     if ($pro == 'np') {
-        $fst = $link->query("SELECT * FROM _gg_cust WHERE _uname = '$username'");
+        $fst = $link->query("SELECT * FROM _gg_cust WHERE _uname = '$username' OR _email = '$username'");
         //CDreate Array to check valid login
         $row = mysqli_fetch_array($fst, MYSQLI_NUM);
 //Get the Salt from the table
@@ -13,13 +15,13 @@ function login_member($link, $username, $password, $pro, $uid, $usrAgent, $td, $
 //Hash the salt and password together to verify in the database
         $deErb = hash('sha1', "$salt$password");
 //Check DB for the above
-        $verify = $link->query("SELECT * FROM _gg_cust WHERE _uname = '$username' AND _pwd = '$deErb'");
+        $verify = $link->query("SELECT * FROM _gg_cust WHERE _uname = '$username' OR _email = '$username' AND _pwd = '$deErb' OR _uid = '$uid'");
 //Check valid login details
         $num_results = mysqli_num_rows($verify);
         if ($num_results < 1) {
             $data = array();
 
-            $data[] = array('resp' => "Login invalid");
+            $data[] = array('resp' => "login_incorrect");
 
             echo json_encode($data);
             $api = 'Invalid Login';
@@ -30,9 +32,11 @@ function login_member($link, $username, $password, $pro, $uid, $usrAgent, $td, $
             $data = array();
 //Go through the result set and return the customer details
             while ($nRow = mysqli_fetch_array($verify)) {
-                $data[] = array('memID' => $nRow["_memNumber"], 'fname' => $nRow["_fname"], 'sname' => $nRow["_sname"], 'dob' => $nRow["_dob"], 'add1' => $nRow["_add1"],
-                    'add2' => $nRow["_add2"], 'town' => $nRow["_town"], 'pcode' => $nRow["_pcode"], 'hphone' => $nRow["_hphone"], 'mphone' => $nRow["_mphone"]
-                    , 'email' => $nRow["_email"], 'country' => $nRow["_country"], 'county' => $nRow["_county"]);
+                $data[] = array('resp' => "success", 'memID' => $nRow["_memNumber"], 'forename' => $nRow["_fname"], 'surname' => $nRow["_sname"],
+                    'dob' => $nRow["_dob"], 'add1' => $nRow["_add1"],
+                    'add2' => $nRow["_add2"], 'town' => $nRow["_town"], 'pc' => $nRow["_pcode"], 'homephone' => $nRow["_hphone"], 'mobilephone' => $nRow["_mphone"]
+                    , 'email' => $nRow["_email"], 'country' => $nRow["_country"], 'county' => $nRow["_county"], 'u' => $nRow["_uname"],
+                    'provider' => $nRow["_provider"], 'uid' => $nRow["_uid"], 'memTkn' => "$rand");
             }
 //Send a JSON RESP back
             echo json_encode($data);
@@ -42,13 +46,13 @@ function login_member($link, $username, $password, $pro, $uid, $usrAgent, $td, $
         }
     } else {
         //Check DB for the above
-        $verify = $link->query("SELECT * FROM _gg_cust WHERE _uid = '$uid'");
+        $verify = $link->query("SELECT * FROM _gg_cust WHERE _uid = '$uid' AND _uname = '$username' OR _email = '$username'");
 //Check valid login details
         $num_results = mysqli_num_rows($verify);
         if ($num_results < 1) {
             $data = array();
 
-            $data[] = array('resp' => "Login invalid");
+            $data[] = array('resp' => "login_incorrect");
 
             echo json_encode($data);
             $api = 'Invalid Login';
@@ -58,11 +62,11 @@ function login_member($link, $username, $password, $pro, $uid, $usrAgent, $td, $
 //Array variable for the JSON response
             $data = array();
 //Go through the result set and return the customer details
-            while ($nRow = mysqli_fetch_array($verify)) {
-                $data[] = array('memID' => $nRow["_memNumber"], 'fname' => $nRow["_fname"], 'sname' => $nRow["_sname"], 'dob' => $nRow["_dob"], 'add1' => $nRow["_add1"],
-                    'add2' => $nRow["_add2"], 'town' => $nRow["_town"], 'pcode' => $nRow["_pcode"], 'hphone' => $nRow["_hphone"], 'mphone' => $nRow["_mphone"]
-                    , 'email' => $nRow["_email"], 'country' => $nRow["_country"], 'county' => $nRow["_county"]);
-            }
+            $data[] = array('resp' => "success", 'memID' => $nRow["_memNumber"], 'forename' => $nRow["_fname"], 'surname' => $nRow["_sname"],
+                'dob' => $nRow["_dob"], 'add1' => $nRow["_add1"],
+                'add2' => $nRow["_add2"], 'town' => $nRow["_town"], 'pc' => $nRow["_pcode"], 'homephone' => $nRow["_hphone"], 'mobilephone' => $nRow["_mphone"]
+                , 'email' => $nRow["_email"], 'country' => $nRow["_country"], 'county' => $nRow["_county"], 'u' => $nRow["_uname"],
+                'provider' => $nRow["_provider"], 'uid' => $nRow["_uid"], 'memTkn' => "$rand");
 //Send a JSON RESP back
             echo json_encode($data);
 //Audit
@@ -70,6 +74,52 @@ function login_member($link, $username, $password, $pro, $uid, $usrAgent, $td, $
             logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
         }
     }
+}
+
+function update_customer_record($memID, $link, $updateArray, $usrAgent, $td, $ip, $reqUrl) {
+    try {
+
+
+        $imp_pbihid = implode(",", $updateArray);
+        $str_format_split = convert_INstr($imp_pbihid);
+
+        // "UPDATE _gg_cust SET $str_format_split WHERE _memNumber = '$memID'";
+        //echo "UPDATE _gg_cust SET $str_format_split WHERE _memNumber = '$memID'";
+        $link->query("UPDATE _gg_cust SET $str_format_split WHERE _memNumber = '$memID'");
+
+        $api = "User $memID updated";
+        logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
+
+        $data = array();
+
+        $data[] = array('resp' => "success");
+
+        echo json_encode($data);
+    } catch (Exception $e) {
+        $data = array();
+
+        $data[] = array('resp' => "update failed $e");
+
+        echo json_encode($data);
+    }
+}
+
+function convert_INstr($test_str) {
+    $isthere_acomma = stripos($test_str, ",");
+    if ($isthere_acomma > 0) {
+        if (strlen($test_str) > 0) {
+            $arr_teststr = split(",", $test_str);
+            if (count($arr_teststr) > 0) {
+                foreach ($arr_teststr as $mx) {
+                    $in_str .= "" . $mx . ",";
+                }
+            }
+            $in_str = substr($in_str, 0, (strlen($in_str) - 1));
+        }
+    } else {
+        $in_str = $test_str;
+    }//end of if ($isthere_acomma > 0) statement
+    return $in_str;
 }
 
 //Login Staff
@@ -139,37 +189,59 @@ function register_staff($link, $fname, $sname, $code, $pwd, $admin, $sales, $bo,
 }
 
 //New Customer Registration
-function register_customer($link, $fname, $sname, $dob, $add1, $add2, $city, $pcode, $county, $idt, $idd, $uname, $pwd, $email, $hphone, $mphone,$pro,$uid, $usrAgent, $td, $ip, $reqUrl) {
-//Get a mem ID
-    $memID = require_once 'uniqueGen.php';
+function register_customer($link, $fname, $sname, $dob, $add1, $add2, $city, $pcode, $county, $idt, $idd, $uname, $pwd, $email, $hphone, $mphone, $pro, $uid, $usrAgent, $td, $ip, $reqUrl) {
+
+//Check if customer exists
+    $verify = $link->query("SELECT * FROM _gg_cust WHERE _email = '$email' OR _uname = '$uname'");
+    //echo "SELECT * FROM _gg_cust WHERE _email = '$email' OR _uname = '$uname'";
+//Check valid login details
+    $row = mysqli_fetch_array($verify, MYSQLI_NUM);
+
+    $rand = require_once 'tempTkn.php';
+
+    if ($row[1] == '') {
+        //Get a mem ID
+        $memID = require_once 'uniqueGen.php';
+
 //Get a Salt
-    $salt = require_once 'saltGen.php';
+        $salt = require_once 'saltGen.php';
 //Apply Salt to the Password
-    $saltPass = "$salt$pwd";
+        $saltPass = "$salt$pwd";
 //Hash the combined password
-    $saltedPass = hash('sha1', $saltPass);
+        $saltedPass = hash('sha1', $saltPass);
 //SQL Query
-    $sql = "INSERT INTO _gg_cust
+        $sql = "INSERT INTO _gg_cust
                     (_memNumber,_fname,_sname,_dob,_add1,_add2,_town,_pcode,_hphone,_mphone,_email,
                     _country,_county,_uname,_salt,_pwd,_id_type,_id_detail,_provider,_uid)
                     VALUES
                     ('$memID','$fname','$sname','$dob','$add1','$add2','$city','$pcode','$hphone',
                      '$mphone','$email','UK', '$county','$uname','$salt','$saltedPass','$idt','$idd','$pro','$uid')";
 
-    $link->query($sql);
+        $link->query($sql);
 
-    $data = array();
+        $data = array();
 //Respond JSON
-    $data[] = array('memID' => "$memID");
+        $data[] = array('resp' => "success", 'memID' => "$memID", 'memTkn' => "$rand");
 
-    echo json_encode($data);
+        echo json_encode($data);
 //Audit
-    $api = "New Customer $fname $sname added";
-    logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
+        $api = "New Customer $fname $sname added";
+        logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
+    } else {
+        $data = array();
+
+        $data[] = array('resp' => "user_exists");
+
+        echo json_encode($data);
+//Audit
+        $api = 'User Exists';
+        logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
+        exit;
+    }
 }
 
 function get_product_info_qr($qr, $link, $usrAgent, $td, $ip, $reqUrl) {
-    $checkSQL = $link->query("SELECT * 
+    $checkSQL = $link->query("SELECT *
                 FROM _gg_stock
                 WHERE _code_id = '$qr'");
 
@@ -179,7 +251,7 @@ function get_product_info_qr($qr, $link, $usrAgent, $td, $ip, $reqUrl) {
         
     } else {
         $data = array();
-        $checkSQL1 = $link->query("SELECT * 
+        $checkSQL1 = $link->query("SELECT *
                                     FROM _gg_stock
                                     WHERE _code_id = '$qr'");
 
@@ -270,12 +342,14 @@ function get_price_by_ean_amazon($ean, $link, $usrAgent, $td, $ip, $reqUrl) {
             'cash_price' => "$percentileCBP", 'upc' => "$ean", 'sub_cat' => "$item_cat", 'points' => "$points");
     }
 
-
+    $slug = seoUrl($desc);
+    $slug = strtolower($slug);
+    $slug = $slug . "-" . $ean;
 
 //Create new record in the DB
     $sql = "INSERT INTO _gg_stock_master
-          (_stock_name,_stock_desc,_sub_cat,_upc,_rrp,_cbp,_ebp,_asr)
-          VALUES ('$desc', '$desc','$item_cat',$ean,$pc,$percentileCBP,$percentileEBP,$asr)";
+          (_stock_name,_stock_desc,_sub_cat,_upc,_rrp,_cbp,_ebp,_asr,_slug)
+          VALUES ('$desc', '$desc','$item_cat',$ean,$pc,$percentileCBP,$percentileEBP,$asr,'$slug')";
     $link->query($sql);
 
 
@@ -286,11 +360,11 @@ function get_price_by_ean_amazon($ean, $link, $usrAgent, $td, $ip, $reqUrl) {
     echo json_encode($data);
 }
 
-function get_price_by_keyword_amazon($q, $link, $usrAgent, $td, $ip, $reqUrl) {
+function get_price_by_keyword_amazon($q, $pType, $link, $usrAgent, $td, $ip, $reqUrl) {
     include("lib/amazon_api_class.php");
 
     $obj = new AmazonProductAPI();
-    $product_type = "All";
+    $product_type = $pType;
     try {
         $result = $obj->getItemByKeyword($q, $product_type);
     } catch (Exception $e) {
@@ -302,12 +376,20 @@ function get_price_by_keyword_amazon($q, $link, $usrAgent, $td, $ip, $reqUrl) {
 
     $cUPC = '';
     $cTitle = '';
-    $cRRP = '';
     $data = array();
 
     foreach ($xml->getElementsByTagName('Item') as $topNode) {
         foreach ($topNode->getElementsByTagName('SalesRank') as $rank) {
             $asr = $rank->nodeValue;
+        }
+        foreach ($topNode->getElementsByTagName('ImageSets') as $topImage) {
+            foreach ($topImage->getElementsByTagName('ImageSet') as $secImage) {
+                foreach ($secImage->getElementsByTagName('LargeImage') as $largeImage) {
+                    foreach ($largeImage->getElementsByTagName('URL') as $imgURI) {
+                        $imgURL = ($imgURI->nodeValue);
+                    }
+                }
+            }
         }
 
         foreach ($topNode->getElementsByTagName('ItemAttributes') as $node) {
@@ -317,36 +399,68 @@ function get_price_by_keyword_amazon($q, $link, $usrAgent, $td, $ip, $reqUrl) {
             foreach ($node->getElementsByTagName('EAN') as $ean) {
                 $cUPC = ($ean->nodeValue);
             }
+            foreach ($node->getElementsByTagName('Binding') as $topCat) {
+                $category = $topCat->nodeValue;
+                $item_cat = mysqli_real_escape_string($link, $category);
+            }
         }
         foreach ($topNode->getElementsByTagName('OfferSummary') as $node) {
 
 
             //LowestUsedPrice
-            foreach ($node->getElementsByTagName('LowestNewPrice') as $lowPrice) {
-                $cRRP = ($lowPrice->nodeValue);
-                $pc = $cRRP / 100;
-                if ($asr <= 999) {
+            foreach ($node->getElementsByTagName('LowestUsedPrice') as $lowPrice) {
+                $pr = $lowPrice->nodeValue;
+                $pc = $pr / 100;
+                $points = $pc * 1000;
+                if ($pc < 0.30) {
+                    $pc = 0.30;
+                }
+                if ($item_cat == 'Blu-ray' || $item_cat == 'DVD' || $item_cat == 'Audio CD') {
                     //Cash buy price
-                    $percentileCBP = round($pc * 0.50, 2);
+                    $percentileCBP = round($pc * 0.32, 2);
                     //Exchange Buy Price
-                    $percentileEBP = round($pc * 0.65, 2);
-                } else if ($asr >= 1000 && $asr <= 9999) {
+                    $percentileEBP = round($pc * 0.40, 2);
+                } else if ($item_cat == 'Video Game') {
                     //Cash buy price
-                    $percentileCBP = round($pc * 0.35, 2);
+                    $percentileCBP = round($pc * 0.62, 2);
                     //Exchange Buy Price
-                    $percentileEBP = round($pc * 0.50, 2);
-                } else if ($asr > 10000) {
-                    //Cash buy price
-                    $percentileCBP = round($pc * 0.20, 2);
-                    //Exchange Buy Price
-                    $percentileEBP = round($pc * 0.35, 2);
+                    $percentileEBP = round($pc * 0.75, 2);
+                } else {
+                    if ($asr <= 999) {
+                        //Cash buy price
+                        $percentileCBP = round($pc * 0.50, 2);
+                        //Exchange Buy Price
+                        $percentileEBP = round($pc * 0.65, 2);
+                    } else if ($asr >= 1000 && $asr <= 9999) {
+                        //Cash buy price
+                        $percentileCBP = round($pc * 0.35, 2);
+                        //Exchange Buy Price
+                        $percentileEBP = round($pc * 0.50, 2);
+                    } else if ($asr > 10000) {
+                        //Cash buy price
+                        $percentileCBP = round($pc * 0.20, 2);
+                        //Exchange Buy Price
+                        $percentileEBP = round($pc * 0.35, 2);
+                    }
                 }
             }
         }
+        $slug = seoUrl($cTitle);
+        $slug = strtolower($slug);
+        $slug = $slug . "-" . $cUPC;
         $data[] = array('stock_name' => "$cTitle",
             'ean' => "$cUPC", 'rrp' => "$pc",
-            'exchangePrice' => "$percentileEBP",
-            'cashPrice' => "$percentileCBP");
+            'exchange_price' => "$percentileEBP",
+            'cash_price' => "$percentileCBP", 'category' => "$item_cat", 'points' => "$points",
+            'image_url' => "$imgURL", 'slug' => $slug);
+
+
+
+//Create new record in the DB
+        $sql = "INSERT INTO _gg_stock_master
+          (_stock_name,_stock_desc,_sub_cat,_upc,_rrp,_cbp,_ebp,_asr,_slug)
+          VALUES ('$cTitle', '$cTitle','$item_cat',$cUPC,$pc,$percentileCBP,$percentileEBP,$asr,'$slug')";
+        $link->query($sql);
     }
 
 
@@ -388,10 +502,15 @@ function add_stock($sName, $sDesc, $cat, $scat, $pic, $upc, $cnd, $col, $percent
     $cat = mysqli_real_escape_string($link, $cat);
     $scat = mysqli_real_escape_string($link, $scat);
 
+    $slug = seoUrl($name);
+    $slug = strtolower($slug);
+    $slug = $slug . "-" . $upc;
+
+
     $sql = "INSERT INTO _gg_stock
-    (_code_id,_stock_name,_stock_desc,_cat,_sub_cat,_pic,_barcode,_cond,_col,_dt_add,_cbp,_ebp,_sp,_add_by,_pprice,_rec_ref)
+    (_code_id,_stock_name,_stock_desc,_cat,_sub_cat,_pic,_barcode,_cond,_col,_dt_add,_cbp,_ebp,_sp,_add_by,_pprice,_rec_ref,_slug)
     VALUES ('$unique_ref','$name', '$desc','$cat','$scat',
-    '$pic','$upc','$cnd','$col','$td',$percentileCBP,$percentileEBP,$sPrice,'$usr',$pprice,'$rec')";
+    '$pic','$upc','$cnd','$col','$td',$percentileCBP,$percentileEBP,$sPrice,'$usr',$pprice,'$rec','$slug')";
 
 
 
@@ -406,12 +525,24 @@ function add_stock($sName, $sDesc, $cat, $scat, $pic, $upc, $cnd, $col, $percent
     echo json_encode($data);
 }
 
+function seoUrl($string) {
+    //Unwanted:  {UPPERCASE} ; / ? : @ & = + $ , . ! ~ * ' ( )
+    $string = strtolower($string);
+    //Strip any unwanted characters
+    $string = preg_replace("/[^a-z0-9_\s-]/", "", $string);
+    //Clean multiple dashes or whitespaces
+    $string = preg_replace("/[\s-]+/", " ", $string);
+    //Convert whitespaces and underscore to dash
+    $string = preg_replace("/[\s_]/", "-", $string);
+    return $string;
+}
+
 function gen_email_purchase($link, $usr, $rec, $etype) {
     $verify = $link->query("SELECT * FROM _gg_cust WHERE _memNumber = '$usr'");
     $row = mysqli_fetch_array($verify, MYSQLI_NUM);
     $usr = $row[0];
     $email = $row[15];
-
+    
     add_to_email_queue($link, $email, $rec, $etype);
 }
 
@@ -434,9 +565,131 @@ function check_stock_master($ean, $link, $usrAgent, $td, $ip, $reqUrl) {
                 'sub_cat' => $nrow["_sub_cat"], 'points' => "$points");
         }
         echo json_encode($data);
+
         $api = "Search Stock Master for $ean";
         logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
     }
+}
+
+//Check existing stock before trying Amazon
+function check_stock_master_web($ean, $link, $usrAgent, $td, $ip, $reqUrl) {
+    $checkSQL = $link->query("SELECT * FROM _gg_stock_master WHERE _upc = '$ean'");
+    $row = mysqli_fetch_array($checkSQL, MYSQLI_NUM);
+
+    if ($row[3] == '') {
+        header("HTTP/1.0 201 No Products Found", true, 201);
+        $api = "No Products matching $ean";
+        logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
+    } else {
+        $data = array();
+        $checkSQLL = $link->query("SELECT * FROM _gg_stock_master WHERE _upc = '$ean'");
+        while ($nrow = mysqli_fetch_array($checkSQLL)) {
+            $point = $nrow["_rrp"];
+            $url = "http://ecx.images-amazon.com/images/I/31SxnS2yWKL.jpg";
+            $points = $point * 1000;
+            $data[] = array('stock_name' => $nrow["_stock_name"], 'stock_desc' => $nrow["_stock_desc"],
+                'ean' => $nrow["_upc"],
+                'rrp' => $nrow["_rrp"], 'cash_price' => $nrow["_cbp"], 'exchange_price' => $nrow["_ebp"],
+                'category' => $nrow["_sub_cat"], 'points' => "$points", 'slug' => $nrow["_slug"], 'image_url' => "$url");
+        }
+        echo json_encode($data);
+        $api = "Search Stock Master for $ean from web";
+        logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
+    }
+}
+
+function add_to_basket_sell($link, $ean, $memID, $usrAgent, $td, $ip, $reqUrl) {
+    //echo"INSERT INTO _gg_basket_sell (_ean,_memID) VALUES ('$ean','$memID')";
+    $link->query("INSERT INTO _gg_basket_sell (_ean,_memID) VALUES ('$ean','$memID')");
+
+    $data = array();
+
+    $data[] = array('resp' => "success");
+
+    echo json_encode($data);
+    $api = "Item $ean added to selling basket for $memID";
+    logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
+}
+
+function add_to_own_list($link, $ean, $memID, $usrAgent, $td, $ip, $reqUrl) {
+    //echo"INSERT INTO _gg_basket_sell (_ean,_memID) VALUES ('$ean','$memID')";
+    $link->query("INSERT INTO _gg_ownlist (_ean,_memID) VALUES ('$ean','$memID')");
+
+    $data = array();
+
+    $data[] = array('resp' => "success");
+
+    echo json_encode($data);
+    $api = "Item $ean added to selling basket for $memID";
+    logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
+}
+
+function add_to_wishlist($link, $ean, $memID, $usrAgent, $td, $ip, $reqUrl) {
+    //echo"INSERT INTO _gg_basket_sell (_ean,_memID) VALUES ('$ean','$memID')";
+    $link->query("INSERT INTO _gg_wishlist (_ean,_memID) VALUES ('$ean','$memID')");
+
+    $data = array();
+
+    $data[] = array('resp' => "success");
+
+    echo json_encode($data);
+    $api = "Item $ean added to selling basket for $memID";
+    logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
+}
+
+function get_wishlist($link, $memID) {
+    
+}
+
+function get_ownlist($link, $memID) {
+    
+}
+
+function get_basket_sell($link, $memID, $usrAgent, $td, $ip, $api, $reqUrl) {
+    $checkSQL = $link->query("SELECT * FROM _gg_basket_sell WHERE _memID = '$memID'");
+    $row = mysqli_fetch_array($checkSQL, MYSQLI_NUM);
+    $data = array();
+    $res = array();
+    if ($row[1] == '') {
+        header("HTTP/1.0 201 No Products Found", true, 201);
+        $api = "No Products matching $memID in sell list";
+        logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
+    } else {
+        $checkSQLL = $link->query("SELECT * FROM _gg_basket_sell WHERE _memID = '$memID'");
+        while ($nrow = mysqli_fetch_array($checkSQLL)) {
+            $ean = $nrow["_ean"];
+            echo $ean;
+            $res = get_from_amz($link, $ean);
+            array_push($data, $res);
+            var_dump($data);
+            
+            //echo $ean;
+        }
+        echo json_encode($data);
+    }
+    //JSON Response
+    
+    //Stock Name, EAN, RRP, EBP, CBP, Cat, Stock Desc, Points, Image, Slug
+}
+
+function get_from_amz($link,$ean) {
+    
+}
+
+function get_basket_buy($link, $memID) {
+    
+}
+
+function add_to_basket_buy($link, $scode, $memID, $usrAgent, $td, $ip, $reqUrl) {
+    $link->query("INSERT INTO _gg_basket_buy (_code_id  ,_memID) VALUES ($scode,'$memID')");
+
+    $data = array();
+
+    $data[] = array('resp' => "success");
+
+    echo json_encode($data);
+    $api = "Item $scode added to selling basket for $memID";
+    logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
 }
 
 //Check existing stock before trying Amazon
@@ -462,41 +715,51 @@ function set_stock_offline($ref, $link, $usrAgent, $td, $ip, $reqUrl) {
 }
 
 function check_stock_no_ean($q, $link, $usrAgent, $td, $ip, $reqUrl) {
-    $checkSQL = $link->query("SELECT * 
-FROM _gg_stock_master
-WHERE MATCH (
-_stock_name
-)
-AGAINST (
-'$q'
-IN BOOLEAN
-MODE
-)");
+    $query = mysqli_real_escape_string($link, $q);
+    $checkSQL = $link->query("SELECT *
+                    FROM _gg_stock_master WHERE _stock_name
+                    LIKE 
+                    '$query%' OR _sub_cat LIKE '$query%'");
 
     $row = mysqli_fetch_array($checkSQL, MYSQLI_NUM);
 
     if ($row[2] == '') {
-        get_price_by_keyword_amazon($q, $link, $usrAgent, $td, $ip, $reqUrl);
+        //get_price_by_keyword_amazon($q, $link, $usrAgent, $td, $ip, $reqUrl);
+
+        header("HTTP/1.0 201 No Products Found", true, 201);
+        $api = "No Products matching $query";
+        logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
+        exit;
     } else {
         $data = array();
-        $checkSQL1 = $link->query("SELECT * 
-FROM _gg_stock_master
-WHERE MATCH (
-_stock_name
-)
-AGAINST (
-'$q'
-IN BOOLEAN
-MODE
-)");
+        $checkSQL1 = $link->query("SELECT *
+                    FROM _gg_stock_master WHERE _stock_name
+                    LIKE 
+                    '$query%'OR _sub_cat LIKE '$query%'");
 
         while ($nrow = mysqli_fetch_array($checkSQL1)) {
-            $data[] = array('stock_name' => $nrow["_stock_name"], 'stock_desc' => $nrow["_stock_desc"], 'ean' => $nrow["_upc"],
-                'rrp' => $nrow["_rrp"], 'cash_price' => $nrow["_cbp"], 'exchange_price' => $nrow["_ebp"]);
+            //echo $nrow["_stock_name"];
+            $ean = $nrow["_upc"];
+            $quant = $link->query("SELECT count(*) as total FROM _gg_stock WHERE _barcode =$ean");
+            $resQuant = mysqli_fetch_assoc($quant);
+            if ($resQuant["total"] == 0) {
+                
+            } else {
+                $points = $nrow["_rrp"] * 100;
+                $data[] = array('stock_name' => $nrow["_stock_name"], 'stock_desc' => $nrow["_stock_desc"], 'ean' => $nrow["_upc"],
+                    'rrp' => $nrow["_rrp"], 'cash_price' => $nrow["_cbp"], 'exchange_price' => $nrow["_ebp"], 'slug' => $nrow["_slug"],
+                    'points' => "$points", 'quantity' => $resQuant["total"]);
+            }
         }
-        $api = "Search for $q";
+        $api = "Search for $query";
         logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
-        echo json_encode($data);
+        if (count($data) > 0) {
+            echo json_encode($data);
+        } else {
+            header("HTTP/1.0 201 No Products in Stock", true, 201);
+            $api = "No Products matching $query in stock";
+            logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
+        }
     }
 }
 
@@ -628,6 +891,7 @@ function create_purchase_receipt($link, $usr, $td, $tcash, $texcg, $tpoints, $us
 }
 
 function add_to_email_queue($link, $email, $rec, $etype) {
+    echo "INSERT INTO _gg_emailq (_email,_email_type,_sent,_rec) VALUES ('$email','$etype',0,'$rec')";
     $link->query("INSERT INTO _gg_emailq (_email,_email_type,_sent,_rec) VALUES ('$email','$etype',0,'$rec')");
 }
 
@@ -674,6 +938,18 @@ function update_file_printed($link, $fname) {
 
 function add_to_print_queue() {
     
+}
+
+function get_all_cust($link) {
+
+    $result = $link->query("SELECT * FROM _gg_cust");
+
+
+    $rows = Array();
+    while ($row = mysqli_fetch_array($result)) {
+        array_push($rows, $row);
+    }
+    echo json_encode($rows);
 }
 
 //Audit Log
