@@ -301,13 +301,19 @@ try {
             $rrp = $_GET['r'];
             $cat = $_GET['c'];
             $scat = $_GET['sc'];
+            $usr = $_GET['usr'];
 
             //Cash buy price
             $cbp = round($rrp * 0.60, 2);
             //Exchange Buy Price
             $ebp = round($rrp * 0.75, 2);
+            if (is_null($_GET['cust'])) {
+                $custadd = '0';
+            } else {
+                $custadd = $_GET['cust'];
+            }
 
-            add_stock_man($sname, $sdesc, $ean, $rrp, $cbp, $ebp, $cat, $scat, $link, $usrAgent, $td, $ip, $reqUrl);
+            add_stock_man($sname, $sdesc, $ean,$usr, $rrp, $cbp, $ebp, $cat, $scat,$custadd, $link, $usrAgent, $td, $ip, $reqUrl);
         } else if ($call == 'add_stock') {
             $sName = $_GET['sn'];
             $sDesc = $_GET['sd'];
@@ -323,8 +329,14 @@ try {
             $pprice = $_GET['pp'];
             $usr = $_GET['us'];
             $rec = $_GET['rec'];
+            
+            if (is_null($_GET['cust'])) {
+                $custadd = 0;
+            } else {
+                $custadd = $_GET['cust'];
+            }
 
-            add_stock($sName, $sDesc, $cat, $scat, $pic, $upc, $cnd, $col, $percentileCBP, $percentileEBP, $sPrice, $usr, $rec, $pprice, $link, $usrAgent, $td, $ip, $reqUrl);
+            add_stock($sName, $sDesc, $cat, $scat, $pic, $upc, $cnd, $col, $percentileCBP, $percentileEBP, $sPrice, $usr,$custadd, $rec, $pprice, $link, $usrAgent, $td, $ip, $reqUrl);
         } else if ($call == 'add_to_basket_sell') {
             $ean = $_GET['ean'];
             $memID = $_GET['memID'];
@@ -347,13 +359,14 @@ try {
             get_basket_sell($link, $memID, $usrAgent, $td, $ip, $api, $reqUrl);
         } else if ($call == 'get_basket_buy') {
             $memID = $_GET['memID'];
+            get_basket_buy($link, $memID, $usrAgent, $td, $ip, $api, $reqUrl);
 
         } else if ($call == 'get_ownlist') {
             $memID = $_GET['memID'];
-
+            get_ownlist($link, $memID, $usrAgent, $td, $ip, $api, $reqUrl);
         } else if ($call == 'get_wishlist') {
             $memID = $_GET['memID'];
-
+            get_wishlist($link, $memID, $usrAgent, $td, $ip, $api, $reqUrl);
             
         } else if ($call == 'gen_email_purchase') {
             $usr = $_GET['u'];

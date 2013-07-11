@@ -286,6 +286,15 @@ function get_price_by_ean_amazon($ean, $link, $usrAgent, $td, $ip, $reqUrl) {
         foreach ($node->getElementsByTagName('SalesRank') as $rank) {
             $asr = $rank->nodeValue;
         }
+        foreach ($topNode->getElementsByTagName('ImageSets') as $topImage) {
+            foreach ($topImage->getElementsByTagName('ImageSet') as $secImage) {
+                foreach ($secImage->getElementsByTagName('LargeImage') as $largeImage) {
+                    foreach ($largeImage->getElementsByTagName('URL') as $imgURI) {
+                        $imgURL = ($imgURI->nodeValue);
+                    }
+                }
+            }
+        }
 //Title
         foreach ($xml->getElementsByTagName('ItemAttributes') as $node) {
             foreach ($node->getElementsByTagName('Title') as $title) {
@@ -339,7 +348,7 @@ function get_price_by_ean_amazon($ean, $link, $usrAgent, $td, $ip, $reqUrl) {
         }
         $data[] = array('stock_name' => "$desc",
             'stock_desc' => "$desc", 'sale_price' => "$pc", 'exchange_price' => "$percentileEBP",
-            'cash_price' => "$percentileCBP", 'upc' => "$ean", 'sub_cat' => "$item_cat", 'points' => "$points");
+            'cash_price' => "$percentileCBP", 'upc' => "$ean", 'sub_cat' => "$item_cat", 'points' => "$points",'image_url' => "$imgURL");
     }
 
     $slug = seoUrl($desc);
@@ -348,8 +357,8 @@ function get_price_by_ean_amazon($ean, $link, $usrAgent, $td, $ip, $reqUrl) {
 
 //Create new record in the DB
     $sql = "INSERT INTO _gg_stock_master
-          (_stock_name,_stock_desc,_sub_cat,_upc,_rrp,_cbp,_ebp,_asr,_slug)
-          VALUES ('$desc', '$desc','$item_cat',$ean,$pc,$percentileCBP,$percentileEBP,$asr,'$slug')";
+          (_stock_name,_stock_desc,_sub_cat,_upc,_rrp,_cbp,_ebp,_asr,_slug,_imgURL)
+          VALUES ('$desc', '$desc','$item_cat',$ean,$pc,$percentileCBP,$percentileEBP,$asr,'$slug','$imgURL')";
     $link->query($sql);
 
 
@@ -458,8 +467,8 @@ function get_price_by_keyword_amazon($q, $pType, $link, $usrAgent, $td, $ip, $re
 
 //Create new record in the DB
         $sql = "INSERT INTO _gg_stock_master
-          (_stock_name,_stock_desc,_sub_cat,_upc,_rrp,_cbp,_ebp,_asr,_slug)
-          VALUES ('$cTitle', '$cTitle','$item_cat',$cUPC,$pc,$percentileCBP,$percentileEBP,$asr,'$slug')";
+          (_stock_name,_stock_desc,_sub_cat,_upc,_rrp,_cbp,_ebp,_asr,_slug,_imgURL)
+          VALUES ('$cTitle', '$cTitle','$item_cat',$cUPC,$pc,$percentileCBP,$percentileEBP,$asr,'$slug','$imgURL')";
         $link->query($sql);
     }
 
@@ -469,12 +478,12 @@ function get_price_by_keyword_amazon($q, $pType, $link, $usrAgent, $td, $ip, $re
     logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
 }
 
-function add_stock_man($sname, $sdesc, $ean, $rrp, $cbp, $ebp, $cat, $scat, $link, $usrAgent, $td, $ip, $reqUrl) {
+function add_stock_man($sname, $sdesc, $ean,$usr, $rrp, $cbp, $ebp, $cat, $scat,$custadd, $link, $usrAgent, $td, $ip, $reqUrl) {
     $ref = require_once 'uniqueGen.php';
 
-    $link->query("INSERT INTO _gg_stock(_code_id,_stock_name,_stock_desc,_barcode,_dt_add,_sp,_cbp,_ebp,_cat,_sub_cat)
+    $link->query("INSERT INTO _gg_stock(_code_id,_stock_name,_stock_desc,_barcode,_dt_add,_add_by,_sp,_cbp,_ebp,_cat,_sub_cat,_cust_add)
 VALUES
-('$ref','$sname','$sdesc',$ean,'$td',$rrp,$cbp,$ebp,'$cat','$scat')");
+('$ref','$sname','$sdesc',$ean,'$td','$usr',$rrp,$cbp,$ebp,'$cat','$scat','$custadd')");
 
     $link->query("INSERT INTO _gg_stock_master
 (_stock_name,_stock_desc,_upc,_rrp,_cbp,_ebp,_cat,_sub_cat)
@@ -490,7 +499,7 @@ VALUES
     logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
 }
 
-function add_stock($sName, $sDesc, $cat, $scat, $pic, $upc, $cnd, $col, $percentileCBP, $percentileEBP, $sPrice, $usr, $rec, $pprice, $link, $usrAgent, $td, $ip, $reqUrl) {
+function add_stock($sName, $sDesc, $cat, $scat, $pic, $upc, $cnd, $col, $percentileCBP, $percentileEBP, $sPrice, $usr,$custadd, $rec, $pprice, $link, $usrAgent, $td, $ip, $reqUrl) {
 
     $unique_ref = require_once 'uniqueGen.php';
     require_once 'getQR.php';
@@ -508,9 +517,9 @@ function add_stock($sName, $sDesc, $cat, $scat, $pic, $upc, $cnd, $col, $percent
 
 
     $sql = "INSERT INTO _gg_stock
-    (_code_id,_stock_name,_stock_desc,_cat,_sub_cat,_pic,_barcode,_cond,_col,_dt_add,_cbp,_ebp,_sp,_add_by,_pprice,_rec_ref,_slug)
+    (_code_id,_stock_name,_stock_desc,_cat,_sub_cat,_pic,_barcode,_cond,_col,_dt_add,_cbp,_ebp,_sp,_add_by,_pprice,_rec_ref,_slug_cust_add)
     VALUES ('$unique_ref','$name', '$desc','$cat','$scat',
-    '$pic','$upc','$cnd','$col','$td',$percentileCBP,$percentileEBP,$sPrice,'$usr',$pprice,'$rec','$slug')";
+    '$pic','$upc','$cnd','$col','$td',$percentileCBP,$percentileEBP,$sPrice,'$usr',$pprice,'$rec','$slug','$custadd')";
 
 
 
@@ -523,6 +532,30 @@ function add_stock($sName, $sDesc, $cat, $scat, $pic, $upc, $cnd, $col, $percent
     $data[] = array('code' => "$unique_ref");
 
     echo json_encode($data);
+    
+    if ($custadd == 0)
+    {
+        
+    }
+    else
+    {
+        $value = $pprice * 1000;
+        $memID = $custadd;
+        assign_points_to_customer($link,$memID, $value);
+    }
+}
+
+function assign_points_to_customer($link,$memID,$value)
+{
+    $get_curr_points = $link->query("SELECT _points_balance FROM _gg_cust WHERE _memNumber = '$memID'");
+    $trow = mysqli_fetch_row($get_curr_points);
+    
+    $curr_points = $trow[26] + $value;
+    
+    
+    $link->query("UPDATE _gg_cust SET _points_balance = $curr_points");
+    
+    
 }
 
 function seoUrl($string) {
@@ -637,12 +670,72 @@ function add_to_wishlist($link, $ean, $memID, $usrAgent, $td, $ip, $reqUrl) {
     logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
 }
 
-function get_wishlist($link, $memID) {
-    
+function get_wishlist($link, $memID, $usrAgent, $td, $ip, $api, $reqUrl) {
+        $checkSQL = $link->query("SELECT * FROM _gg_wishlist WHERE _memID = '$memID'");
+    $row = mysqli_fetch_array($checkSQL, MYSQLI_NUM);
+    $data = array();
+    if ($row[1] == '') {
+        header("HTTP/1.0 201 No Products Found", true, 201);
+        $api = "No Products matching $memID in wish list";
+        logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
+    } else {
+        $checkSQLL = $link->query("SELECT * FROM _gg_wishlist WHERE _memID = '$memID'");
+        while ($nrow = mysqli_fetch_array($checkSQLL)) {
+            
+            $ean = $nrow["_ean"];
+            //echo $ean;
+            $getResults = $link->query("SELECT * FROM _gg_stock_master WHERE _upc = '$ean'");
+                $trow = mysqli_fetch_row($getResults);
+                $point = $trow[4];
+                $url = "http://ecx.images-amazon.com/images/I/31SxnS2yWKL.jpg";
+                $points = $point * 1000;
+                $data[] = array('stock_name' => $trow[1], 'stock_desc' => $trow[2],
+                'ean' => $trow[3],
+                'rrp' => $trow[4], 'cash_price' => $trow[5], 'exchange_price' => $trow[6],
+                'category' => $trow[8], 'points' => "$points", 'slug' => $trow[14], 'image_url' => "$url"); 
+            
+            
+            
+        }
+        
+    }
+    echo json_encode($data);
+        $api = "Wishlist returned for $memID";
+        logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
 }
 
-function get_ownlist($link, $memID) {
-    
+function get_ownlist($link, $memID, $usrAgent, $td, $ip, $api, $reqUrl) {
+    $checkSQL = $link->query("SELECT * FROM _gg_ownlist WHERE _memID = '$memID'");
+    $row = mysqli_fetch_array($checkSQL, MYSQLI_NUM);
+    $data = array();
+    if ($row[1] == '') {
+        header("HTTP/1.0 201 No Products Found", true, 201);
+        $api = "No Products matching $memID in own list";
+        logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
+    } else {
+        $checkSQLL = $link->query("SELECT * FROM _gg_ownlist WHERE _memID = '$memID'");
+        while ($nrow = mysqli_fetch_array($checkSQLL)) {
+            
+            $ean = $nrow["_ean"];
+            //echo $ean;
+            $getResults = $link->query("SELECT * FROM _gg_stock_master WHERE _upc = '$ean'");
+                $trow = mysqli_fetch_row($getResults);
+                $point = $trow[4];
+                $url = "http://ecx.images-amazon.com/images/I/31SxnS2yWKL.jpg";
+                $points = $point * 1000;
+                $data[] = array('stock_name' => $trow[1], 'stock_desc' => $trow[2],
+                'ean' => $trow[3],
+                'rrp' => $trow[4], 'cash_price' => $trow[5], 'exchange_price' => $trow[6],
+                'category' => $trow[8], 'points' => "$points", 'slug' => $trow[14], 'image_url' => "$url"); 
+            
+            
+            
+        }
+        
+    }
+    echo json_encode($data);
+        $api = "Ownlist returned for $memID";
+        logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
 }
 
 function get_basket_sell($link, $memID, $usrAgent, $td, $ip, $api, $reqUrl) {
@@ -675,17 +768,56 @@ function get_basket_sell($link, $memID, $usrAgent, $td, $ip, $api, $reqUrl) {
         
     }
     echo json_encode($data);
-        $api = "Basket returned for $memID";
+        $api = "Basket Sell returned for $memID";
         logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
 }
 
 
-function get_basket_buy($link, $memID) {
-    
+function get_basket_buy($link, $memID, $usrAgent, $td, $ip, $api, $reqUrl) { 
+    $checkSQL = $link->query("SELECT * FROM _gg_basket_buy WHERE _memID = '$memID'");
+    $row = mysqli_fetch_array($checkSQL, MYSQLI_NUM);
+    $data = array();
+    if ($row[1] == '') {
+        header("HTTP/1.0 201 No Products Found", true, 201);
+        $api = "No Products matching $memID in buy list";
+        logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
+    } else {
+        $checkSQLL = $link->query("SELECT * FROM _gg_basket_buy WHERE _memID = '$memID'");
+        while ($nrow = mysqli_fetch_array($checkSQLL)) {
+            
+            $codeid = $nrow["_code_id"];
+            //echo $ean;
+            $getResults = $link->query("SELECT * FROM _gg_stock WHERE _code_id = '$codeid'");
+            $trow = mysqli_fetch_row($getResults);
+            $point = $trow[9];
+            $url = "http://ecx.images-amazon.com/images/I/31SxnS2yWKL.jpg";
+                $points = $point * 1000;
+                if ($trow[15] == '0000-00-00 00:00:00')
+                {
+                    $avail = 'available';
+                }
+                else
+                {
+                    $avail = 'item_sold';
+                }
+                
+                $data[] = array('stock_name' => $trow[2], 'stock_desc' => $trow[3],
+                'ean' => $trow[8],
+                'rrp' => $trow[12], 'cash_price' => $trow[9], 'exchange_price' => $trow[10],
+                'category' => $trow[5], 'points' => "$points", 'slug' => $trow[32], 'image_url' => "$url",'stock' => "$avail"); 
+            
+            
+            
+        }
+        
+    }
+    echo json_encode($data);
+        $api = "Basket Buy returned for $memID";
+        logRequest($link, $usrAgent, $td, $ip, $api, $reqUrl);
 }
 
 function add_to_basket_buy($link, $scode, $memID, $usrAgent, $td, $ip, $reqUrl) {
-    $link->query("INSERT INTO _gg_basket_buy (_code_id  ,_memID) VALUES ($scode,'$memID')");
+    $link->query("INSERT INTO _gg_basket_buy (_code_id  ,_memID) VALUES ('$scode','$memID')");
 
     $data = array();
 
